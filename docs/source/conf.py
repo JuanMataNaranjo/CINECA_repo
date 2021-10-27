@@ -50,7 +50,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'snakemake_log_analysis'
-copyright = '2021, Juan Mata Naranjo'
+copyright = '2021, CINECA'
 author = 'Juan Mata Naranjo'
 
 # The version info for the project you're documenting, acts as replacement for

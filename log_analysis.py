@@ -59,17 +59,17 @@ class Bwa(LogMain):
 
     def check_log(self):
 
-        self._check_lines()
-        self._check_num_sequence()
-        self._check_consistency()
-        self._check_start_statement()
-        self._check_correct_sample()
-        self._check_candidate_pairs()
-        self._check_not_enough_pairs(threshold=100)
-        self._check_enough_pairs(threshold=100)
+        self.check_lines()
+        self.check_num_sequence()
+        self.check_consistency()
+        self.check_start_statement()
+        self.check_correct_sample()
+        self.check_candidate_pairs()
+        self.check_not_enough_pairs(threshold=100)
+        self.check_enough_pairs(threshold=100)
         print('Everything fine :)')
 
-    def _check_lines(self):
+    def check_lines(self):
         """
         Check the number of lines of the log
         """
@@ -80,7 +80,7 @@ class Bwa(LogMain):
             if len(self.log_file) != 6:
                 raise Exception('check_lines: ' + self.sample + ' has the wrong number of log lines')
 
-    def _check_num_sequence(self):
+    def check_num_sequence(self):
         """
         Make sure we are reading a positive number of sequences
         """
@@ -88,7 +88,7 @@ class Bwa(LogMain):
         if any(int(i) < 0 for i in seq):
             raise Exception('check_num_sequence: ' + self.sample + ' did not read a positive number of sequences')
 
-    def _check_consistency(self):
+    def check_consistency(self):
         """
         Check consistency in terms of single-end and paired-end sequences
         """
@@ -105,7 +105,7 @@ class Bwa(LogMain):
                 raise Exception('check_consistency: ' + self.sample + ' has inconsistency in terms of read sequences '
                                                                       'and processed sequences')
 
-    def _check_start_statement(self):
+    def check_start_statement(self):
         """
         Make sure that the initial log statement is the expected one
         """
@@ -113,7 +113,7 @@ class Bwa(LogMain):
             raise Exception('check_start_statement: ' + self.sample + ' does not have the correct log starting '
                                                                       'statement')
 
-    def _check_finish_statement(self):
+    def check_finish_statement(self):
         """
         The last log statement needs to provide us with positive runtime values
         """
@@ -122,7 +122,7 @@ class Bwa(LogMain):
         if any(nums <= 0 for i in nums) | text != '[main] Real time:':
             raise Exception('check_finish_statement: ' + self.sample + ' does not have the final statement we expected')
 
-    def _check_correct_sample(self):
+    def check_correct_sample(self):
         """
         Make sure that the file that is being processed is the actual sample
         """
@@ -131,7 +131,7 @@ class Bwa(LogMain):
             raise Exception('check_correct_sample: ' + self.sample + ' should be processed however another sample has '
                                                                      'been processed instead')
 
-    def _check_candidate_pairs(self):
+    def check_candidate_pairs(self):
         """
         Check the candidate pairs are being evaluated
         """
@@ -140,7 +140,7 @@ class Bwa(LogMain):
                 raise Exception(
                     'check_candidate_pairs: ' + self.sample + ' does not have the expected candidate pairs output')
 
-    def _check_not_enough_pairs(self, threshold=100):
+    def check_not_enough_pairs(self, threshold=100):
         """
         Whenever there are not enough pairs the command skips those pairs
         """
@@ -157,14 +157,14 @@ class Bwa(LogMain):
                                                                               'number of pairs where this is not the '
                                                                               'case')
 
-    def _check_enough_pairs(self, threshold=100):
+    def check_enough_pairs(self, threshold=100):
         """
         When we have enough pairs, there are several things that need to be checked
         :param threshold: Threshold which will define when we have enough pairs or not
         """
         if self.paired:
             for num, i in enumerate(self.log_file[4:-4]):
-                if (i[-4:-1] == '...'):
+                if i[-4:-1] == '...':
                     if self.dict_[self.log_file[4:-4][1][-6:-4]] > threshold:
                         if ((self.log_file[4 + num + 1][:40] != '[M::mem_pestat] (25, 50, 75) percentile:') |
                                 (self.log_file[4 + num + 2][
@@ -177,10 +177,6 @@ class Bwa(LogMain):
                     else:
                         raise Exception('check_enough_pairs ' + self.sample + ' not enough pairs, however code has '
                                                                               'considered to have enough pairs anyway')
-
-
-
-
 
 
 class Fastqc(LogMain):
@@ -209,11 +205,11 @@ class Fastqc(LogMain):
 
     def check_log(self):
 
-        self._check_lines()
-        self._check_start_end()
+        self.check_lines()
+        self.check_start_end()
         print('Everything fine :)')
 
-    def _check_lines(self):
+    def check_lines(self):
         """
         Check correct number of lines in log
         """
@@ -225,7 +221,7 @@ class Fastqc(LogMain):
             if len(self.log_file_2) != 22:
                 raise Exception('check_lines: ' + self.sample + '_R2 does not have the correct number of lines')
 
-    def _check_start_end(self):
+    def check_start_end(self):
         """
         Check start and end statements are the expected ones
         """
