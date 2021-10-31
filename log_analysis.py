@@ -472,3 +472,257 @@ class SamSort(LogMain):
             (any(int(i) < 0 for i in nums))):
             raise Exception('check_removals: ' + self.sample + ' has some issue (text or numeric related)')
 
+
+class BaseRecalibrator(LogMain):
+    """
+    This class will check the baserecalibrator log
+    """
+
+    def __init__(self, path, sample):
+        self.log_file = None
+        self.log_template = None
+        self.path = path
+        self.sample = sample
+        self.paired = self.single_paired()
+        self.read_log()
+        self._read_template()
+        self.global_flags = []
+        self.baserecalibrator = []  # Contains info on BaseRecalibrationEngine and BaseRecalibrator
+        self.featuremanager = []
+        self.progressmeter = []
+        self.final_section = None
+        self.split_log()
+
+    def single_paired(self, table_path='data/fastq.csv'):
+        """
+        Check whether the sample is paired (R1 and R2) or single (only R1). This method is relevant
+        for cases in which two different log files are generated
+        :param table_path: Path in which we can find the fastq.csv (file containing this information)
+        :return: Boolean value which will be stored as part of the class variables
+        """
+
+        df = pd.read_csv(table_path)
+
+        bool_ = len(df[df.Sample == self.sample]) == 2
+
+        return bool_
+
+    def read_log(self):
+        """
+        Method to store the log file as part of the class variables
+        """
+        with open(self.path + self.sample + '_sort_nodup.recaldat.log') as f:
+            self.log_file = f.readlines()
+
+    def _read_template(self, path='data/template_recaldat.log'):
+        """
+        We read the global flag template so that we can compare this part more easily
+        """
+        with open(path) as f:
+            self.log_template = f.readlines()
+
+    def split_log(self):
+        """
+        This method is used to split the log into smaller and more manageable files (due to the large size of the file
+        its better to split before to simplify our life). The outputs are stored as part of the class variables
+
+        - ``self.global_flags``: Everything after [Global Flags] until that part ends
+        - ``self.baserecalibrator``: Information on BaseRecalibrationEngine and BaseRecalibrator
+        - ``self.featuremanager``: Information on FeatureManager
+        - ``self.progressmeter``: Information on the ProgressMeter
+        - ``self.final_section``: Last part of the log with final results
+        """
+
+        global_flags_bool = False
+        baserecalibrator_bool = False
+        featuremanager_bool = False
+        progressmeter_bool = False
+
+        for row in self.log_file:
+            if row[:-1] == '[Global flags]':
+                global_flags_bool = True
+                continue
+
+            if bool(re.search(r'(\d+-\d+-\d+)', row[:10])):
+                global_flags_bool = False
+
+            if bool(re.search(r'INFO  BaseRecalibrat', row)):
+                baserecalibrator_bool = True
+
+            if bool(re.search(r'read\(s\) filtered by:', row)):
+                baserecalibrator_bool = True
+
+            if bool(re.search(r'INFO  ProgressMeter', row)):
+                progressmeter_bool = True
+
+            if bool(re.search(r'INFO  FeatureManager', row)):
+                featuremanager_bool = True
+
+            if global_flags_bool:
+                self.global_flags.append(row)
+            elif baserecalibrator_bool:
+                self.baserecalibrator.append(row)
+                baserecalibrator_bool = False
+            elif featuremanager_bool:
+                self.featuremanager.append(row)
+                featuremanager_bool = False
+            elif progressmeter_bool:
+                self.progressmeter.append(row)
+                progressmeter_bool = False
+
+        self.final_section = self.log_file[-11:]
+
+    def check_log(self):
+        """
+        This method will run all the methods implemented for this class
+        """
+
+        self.check_running()
+        self.check_correct_sample()
+        self.check_global_flags_start()
+        self.check_final_section()
+        self.check_global_flags()
+        self.check_baserecalibrator()
+        self.check_featuremanager()
+        self.check_progressmeter()
+
+    def check_running(self):
+        """
+        Check that the log file contains a row written running:
+
+        - ``Running:``
+        """
+        if self.log_file[1][:-1] != 'Running:':
+            raise Exception('check_running: ' + self.sample + ' did not start running...')
+
+    def check_correct_sample(self):
+        """
+        Make sure that the file that is being processed is the actual sample
+
+        - If we are processing sample HSRR062650 we should only have this value in the command line string
+        """
+        if len(re.findall(self.sample, self.log_file[2][:-1])) == 0:
+            raise Exception('check_correct_sample: ' + self.sample + ' should be processed however another sample has '
+                                                                     'been processed instead')
+
+    def check_global_flags_start(self):
+        """
+        Check we have a section with global flags:
+
+        - ``[Global flags]``
+        """
+        if self.log_file[3][:-1] != '[Global flags]':
+            raise Exception('check_global_flags: ' + self.sample + ' defining the global flags did not seem to work')
+
+    def check_final_section(self):
+        """
+        Method to run checks on the final section part of the log, including the following methods:
+
+        - ``check_final_section_length``
+        - ``check_final_section_success``
+        - ``check_final_section_others``
+
+        """
+
+        self.check_final_section_length()
+        self.check_final_section_success()
+        self.check_final_section_others()
+
+    def check_global_flags(self):
+        """
+        Method to run checks on the global flags part of the log, including the following methods:
+
+        - ``check_global_flags_length``
+        - ``check_global_flags_variables``
+        """
+
+        self.check_global_flags_length()
+        self.check_global_flags_variables()
+
+    def check_baserecalibrator(self):
+        """
+        Method to run checks on the final section part of the log
+        """
+
+        pass
+
+    def check_featuremanager(self):
+        """
+        Method to run checks on the final section part of the log
+        """
+
+        pass
+
+    def check_progressmeter(self):
+        """
+        Method to run checks on the final section part of the log
+        """
+
+        pass
+
+    def check_final_section_length(self):
+        """
+        Method to check the length of the final section
+
+        - The length should be 11
+        """
+        if len(self.final_section) != 11:
+            raise Exception('check_final_section_length: ' + self.sample + ' does not have the expected number of rows')
+
+    def check_final_section_success(self):
+        """
+        Makes sure the Recalibration has been success
+        """
+        if self.final_section[1][:-1] != 'SUCCESS':
+            raise Exception('check_final_section_success: ' + self.sample + ' has not been successful during '
+                                                                            'BaseRecalibration')
+
+    def check_final_section_others(self):
+        """
+        Check that the other rows also have the expected output, in particular we check that the following strings are
+        present:
+
+        - ``PSYoungGen``
+        - ``ParOldGen``
+        -  ``Metaspace``
+        """
+        s = ''.join(self.final_section[3:])
+        if len(re.findall(r"\bPSYoungGen\b|\bParOldGen\b|\bMetaspace\b", s)) != 3:
+            raise Exception('check_final_section_others: ' + self.sample + ' not all the expected fields are present '
+                                                                           'in the last part of the log')
+
+    def check_global_flags_length(self):
+        """
+        Method to check the length of the global flags section
+
+        - The length should be 722
+        """
+        if len(self.global_flags) != 722:
+            raise Exception('check_global_flags_length: ' + self.sample + ' does not have the expected number of rows')
+
+    def check_global_flags_variables(self):
+        """
+        Method to check that all the global flags are set as expected
+
+        - We compare the global flags with that of the template (check template_recaldat.log file for more details)
+        - There are only 5 rows which are not supposed to be equal (they changed based on the computer session used):
+            - ``uintx InitialHeapSize``
+            - ``uintx MaxHeapSize``
+            - ``uintx MaxNewSize``
+            - ``uintx NewSize``
+            - ``uintx OldSize``
+        - All other variables should be the same
+        """
+        for row in range(len(self.global_flags)):
+            original = self.global_flags[row]
+            template = self.log_template[row]
+
+            if (original != template) & (row not in [257, 304, 316, 349, 360]):
+                raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
+                                                                                 'flags')
+
+
+
+
+
+
