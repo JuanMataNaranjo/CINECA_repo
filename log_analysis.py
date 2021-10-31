@@ -65,6 +65,15 @@ class Bwa(LogMain):
     def check_log(self):
         """
         This method will run all the methods implemented for this class
+
+        - ``check_lines()``
+        - ``check_num_sequence()``
+        - ``check_consistency()``
+        - ``check_start_statement()``
+        - ``check_correct_sample()``
+        - ``check_candidate_pairs()``
+        - ``check_not_enough_pairs(threshold=100)``
+        - ``check_enough_pairs(threshold=100)``
         """
         self.check_lines()
         self.check_num_sequence()
@@ -248,6 +257,9 @@ class Fastqc(LogMain):
     def check_log(self):
         """
         This method will run all the methods implemented for this class
+
+        - ``check_lines()``
+        - ``check_start_end()``
         """
         self.check_lines()
         self.check_start_end()
@@ -321,6 +333,17 @@ class SamSort(LogMain):
     def check_log(self):
         """
         This method will run all the methods implemented for this class
+
+        - ``check_lines()``
+        - ``check_start_statement()``
+        - ``check_finish_statement()``
+        - ``check_correct_sample()``
+        - ``check_third_line()``
+        - ``check_unmated()``
+        - ``check_header()``
+        - ``check_rows()``
+        - ``check_table_sums()``
+        - ``check_removals()``
         """
         self.check_lines()
         self.check_start_statement()
@@ -575,6 +598,15 @@ class BaseRecalibrator(LogMain):
     def check_log(self):
         """
         This method will run all the methods implemented for this class
+
+        - ``check_running()``
+        - ``check_correct_sample()``
+        - ``check_global_flags_start()``
+        - ``check_final_section()``
+        - ``check_global_flags()``
+        - ``check_baserecalibrator()``
+        - ``check_featuremanager()``
+        - ``check_progressmeter()``
         """
 
         self.check_running()
@@ -641,24 +673,41 @@ class BaseRecalibrator(LogMain):
 
     def check_baserecalibrator(self):
         """
-        Method to run checks on the final section part of the log
+        Method to run checks on the base recalibrator part of the log, including the following methods:
+
+        - ``check_baserecalibrator_engine``
+        - ``check_baserecalibrator_covariates``
+        - ``check_baserecalibrator_filters``
+        - ``check_baserecalibrator_quantization``
         """
 
-        pass
+        self.check_baserecalibrator_engine()
+        self.check_baserecalibrator_covariates()
+        self.check_baserecalibrator_filters()
+        self.check_baserecalibrator_quantization()
+
 
     def check_featuremanager(self):
         """
-        Method to run checks on the final section part of the log
+        Method to run checks on the feature manager part of the log, including the following methods:
+
+        - ``check_featuremanager_files``
         """
 
-        pass
+        self.check_featuremanager_files()
+
+
 
     def check_progressmeter(self):
         """
-        Method to run checks on the final section part of the log
+        Method to run checks on the progress meter part of the log, including the following methods:
+
+        - ``check_progressmeter_len``
+        - ``check_progressmeter_start_end``
         """
 
-        pass
+        self.check_progressmeter_len()
+        self.check_progressmeter_start_end()
 
     def check_final_section_length(self):
         """
@@ -705,7 +754,7 @@ class BaseRecalibrator(LogMain):
         Method to check that all the global flags are set as expected
 
         - We compare the global flags with that of the template (check template_recaldat.log file for more details)
-        - There are only 5 rows which are not supposed to be equal (they changed based on the computer session used):
+        - There are only 5 rows which are not supposed to be equal (they changed based on the computer session used)
             - ``uintx InitialHeapSize``
             - ``uintx MaxHeapSize``
             - ``uintx MaxNewSize``
@@ -720,6 +769,137 @@ class BaseRecalibrator(LogMain):
             if (original != template) & (row not in [257, 304, 316, 349, 360]):
                 raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
                                                                                  'flags')
+
+    def check_progressmeter_len(self):
+        """
+        Check correct length of this section:
+        - For paired it should be 19 rows
+        - For single it should be 18 rows
+        """
+        if self.paired:
+            if len(self.progressmeter) != 19:
+                raise Exception('check_progressmeter_len: ' + self.sample + ' does not have the right number of rows')
+        else:
+            if len(self.progressmeter) != 18:
+                raise Exception('check_progressmeter_len: ' + self.sample + ' does not have the right number of rows')
+
+    def check_progressmeter_start_end(self):
+        """
+        Check correct start and end statements
+        - ``Starting traversal``
+        - ``Traversal complete. Processed 180757 total reads in 2.6 minutes.``
+        - We check that the strings are correct and also that the numeric part is larger than 0
+        """
+        start_text = self.progressmeter[0][-19:-1]
+        end_text = re.findall('Traversal complete. Processed', self.progressmeter[-1][15:])
+        end_nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.progressmeter[-1][15:])))
+        if ((start_text != 'Starting traversal') |
+            (len(end_text) != 1) |
+            (any(i <=0 for i in end_nums))):
+            raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
+                                                                              'end statements in the ProgressMeter '
+                                                                              'section')
+
+    def check_featuremanager_files(self):
+        """
+        Check that the files used to extract the features are the correct ones. The files which should be used are:
+
+        - ``hg38_resources/dbsnp_reannotated.vcf``
+        - ``hg38_resources/Mills_and_1000G_gold_standard.indels.hg38.vcf``
+        - ``hg38_resources/1000G_omni2.5.hg38.vcf``
+        - ``hg38_resources/wgs_calling_regions.hg38.interval_list``
+        """
+
+        list_ = ['hg38_resources/dbsnp_reannotated.vcf',
+                 'hg38_resources/Mills_and_1000G_gold_standard.indels.hg38.vcf',
+                 'hg38_resources/1000G_omni2.5.hg38.vcf',
+                 'hg38_resources/wgs_calling_regions.hg38.interval_list']
+
+        s_check = ''.join(['\\' + 'b' + i + '\\' + 'b|' for i in list_])[:-1]
+        s = ''.join(self.featuremanager)
+        if len(re.findall(s_check, s)) != 4:
+            raise Exception('check_featuremanager_files: ' + self.sample + ' did not get the features from the correct '
+                                                                           'input files')
+
+    def check_baserecalibrator_engine(self):
+        """
+        Method to check that the base recalibrator engine starts and ends correctly. We make sure that the following
+        are present:
+
+        - ``Initializing engine``
+        - ``Done initializing engine``
+        - ``Shutting down engine``
+        """
+        t1 = self.baserecalibrator[19][-20:-1] != 'Initializing engine'
+        t2 = self.baserecalibrator[20][-25:-1] != 'Done initializing engine'
+        t3 = self.baserecalibrator[-1][-21:-1] != 'Shutting down engine'
+
+        if t1 | t2 | t3:
+            raise Exception('check_baserecalibrator_engine: ' + self.sample + ' baserecalibrator engine did not work '
+                                                                              'properly')
+
+    def check_baserecalibrator_covariates(self):
+        """
+        Method to check that the base recalibrator engine considers the correct covariate values:
+
+        - ``ReadGroupCovariate``
+        - ``QualityScoreCovariate``
+        - ``ContextCovariate``
+        - ``CycleCovariate``
+        """
+        t1 = self.baserecalibrator[22][-19:-1] != 'ReadGroupCovariate'
+        t2 = self.baserecalibrator[23][-22:-1] != 'QualityScoreCovariate'
+        t3 = self.baserecalibrator[24][-17:-1] != 'ContextCovariate'
+        t4 = self.baserecalibrator[25][-15:-1] != 'CycleCovariate'
+
+        if t1 | t2 | t3 | t4:
+            raise Exception('check_baserecalibrator_engine: ' + self.sample + ' not all the covariates have been used')
+
+    def check_baserecalibrator_filters(self):
+        """
+        Method to check that the base recalibrator engine has execited the correct filters:
+
+        - ``MappingQualityAvailableReadFilter``
+        - ``MappedReadFilter``
+        - ``NotSecondaryAlignmentReadFilter``
+        - ``NotDuplicateReadFilter``
+        - ``PassesVendorQualityCheckReadFilter``
+        - ``WellformedReadFilter``
+        """
+        t1 = self.baserecalibrator[27][-35:-2] != 'MappingQualityAvailableReadFilter'
+        t2 = self.baserecalibrator[28][-18:-2] != 'MappedReadFilter'
+        t3 = self.baserecalibrator[29][-33:-2] != 'NotSecondaryAlignmentReadFilter'
+        t4 = self.baserecalibrator[30][-24:-2] != 'NotDuplicateReadFilter'
+        t5 = self.baserecalibrator[31][-36:-2] != 'PassesVendorQualityCheckReadFilter'
+        t6 = self.baserecalibrator[32][-22:-2] != 'WellformedReadFilter'
+
+        if t1 | t2 | t3 | t4 | t5 | t6:
+            raise Exception('check_baserecalibrator_filters: ' + self.sample + ' not all the correct filters have been '
+                                                                               'used on the base recalibrator')
+
+    def check_baserecalibrator_quantization(self):
+        """
+        Method to check that the base recalibrator engine generates the report well and that the quantization passes
+
+        - ``Calculating quantized quality scores...``
+        - ``Writing recalibration report...``
+        - ``...done!``
+        - ``BaseRecalibrator was able to recalibrate 371510 reads``
+        - We also check that the recalibration is done over a number greater than 0
+        """
+        t1 = self.baserecalibrator[33][-40:-1] != 'Calculating quantized quality scores...'
+        t2 = self.baserecalibrator[34][-32:-1] != 'Writing recalibration report...'
+        t3 = self.baserecalibrator[35][-9:-1] != '...done!'
+        t4 = re.sub(r'[0-9]', '', self.baserecalibrator[36][-54:-1]) != 'BaseRecalibrator was able to recalibrate  reads'
+        t5 = int(re.findall(r'\d+', self.baserecalibrator[36][-54:-1])[0]) < 0
+
+        if t1 | t2 | t3 | t4 | t5:
+            raise Exception('check_baserecalibrator_quantization: ' + self.sample + ' the quantization part did not '
+                                                                                    'work properly')
+
+
+
+
 
 
 
