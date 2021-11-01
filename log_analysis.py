@@ -898,6 +898,330 @@ class BaseRecalibrator(LogMain):
                                                                                     'work properly')
 
 
+class ApplyBQSR(LogMain):
+    """
+    This class will check the Apply BQSR log
+    """
+
+    def __init__(self, path, sample):
+        self.log_file = None
+        self.log_template = None
+        self.path = path
+        self.sample = sample
+        self.paired = self.single_paired()
+        self.read_log()
+        self._read_template()
+        self.global_flags = []
+        self.applybqsr = []  # Contains info on BaseRecalibrationEngine and BaseRecalibrator
+        self.featuremanager = []
+        self.progressmeter = []
+        self.final_section = None
+        self.split_log()
+
+    def single_paired(self, table_path='data/fastq.csv'):
+        """
+        Check whether the sample is paired (R1 and R2) or single (only R1). This method is relevant
+        for cases in which two different log files are generated
+        :param table_path: Path in which we can find the fastq.csv (file containing this information)
+        :return: Boolean value which will be stored as part of the class variables
+        """
+
+        df = pd.read_csv(table_path)
+
+        bool_ = len(df[df.Sample == self.sample]) == 2
+
+        return bool_
+
+    def read_log(self):
+        """
+        Method to store the log file as part of the class variables
+        """
+        with open(self.path + self.sample + '_sort_nodup.bqsr.log') as f:
+            self.log_file = f.readlines()
+
+    def _read_template(self, path='data/template_recaldat.log'):
+        """
+        We read the global flag template so that we can compare this part more easily
+        """
+        with open(path) as f:
+            self.log_template = f.readlines()
+
+    def split_log(self):
+        """
+        This method is used to split the log into smaller and more manageable files (due to the large size of the file
+        its better to split before to simplify our life). The outputs are stored as part of the class variables
+
+        - ``self.global_flags``: Everything after [Global Flags] until that part ends
+        - ``self.applybqsr``: Information on ApplyBQSR and BaseRecalibrator
+        - ``self.featuremanager``: Information on FeatureManager
+        - ``self.progressmeter``: Information on the ProgressMeter
+        - ``self.final_section``: Last part of the log with final results
+        """
+
+        global_flags_bool = False
+        applybqsr_bool = False
+        featuremanager_bool = False
+        progressmeter_bool = False
+
+        for row in self.log_file:
+            if row[:-1] == '[Global flags]':
+                global_flags_bool = True
+                continue
+
+            if bool(re.search(r'(\d+-\d+-\d+)', row[:10])):
+                global_flags_bool = False
+
+            if bool(re.search(r'INFO  ApplyBQSR', row)):
+                applybqsr_bool = True
+
+            if bool(re.search(r'INFO  ProgressMeter', row)):
+                progressmeter_bool = True
+
+            if bool(re.search(r'INFO  FeatureManager', row)):
+                featuremanager_bool = True
+
+            if global_flags_bool:
+                self.global_flags.append(row)
+            elif applybqsr_bool:
+                self.applybqsr.append(row)
+                applybqsr_bool = False
+            elif featuremanager_bool:
+                self.featuremanager.append(row)
+                featuremanager_bool = False
+            elif progressmeter_bool:
+                self.progressmeter.append(row)
+                progressmeter_bool = False
+
+        self.final_section = self.log_file[-9:]
+
+    def check_log(self):
+        """
+        This method will run all the methods implemented for this class
+
+        - ``check_running()``
+        - ``check_correct_sample()``
+        - ``check_global_flags_start()``
+        - ``check_final_section()``
+        - ``check_global_flags()``
+        - ``check_applybqsr()``
+        - ``check_featuremanager()``
+        - ``check_progressmeter()``
+        """
+
+        self.check_running()
+        self.check_correct_sample()
+        self.check_global_flags_start()
+        self.check_final_section()
+        self.check_global_flags()
+        self.check_applybqsr()
+        self.check_featuremanager()
+        self.check_progressmeter()
+
+    def check_running(self):
+        """
+        Check that the log file contains a row written running:
+
+        - ``Running:``
+        """
+        if self.log_file[1][:-1] != 'Running:':
+            raise Exception('check_running: ' + self.sample + ' did not start running...')
+
+    def check_correct_sample(self):
+        """
+        Make sure that the file that is being processed is the actual sample
+
+        - If we are processing sample HSRR062650 we should only have this value in the command line string
+        """
+        if len(re.findall(self.sample, self.log_file[2][:-1])) == 0:
+            raise Exception('check_correct_sample: ' + self.sample + ' should be processed however another sample has '
+                                                                     'been processed instead')
+
+    def check_global_flags_start(self):
+        """
+        Check we have a section with global flags:
+
+        - ``[Global flags]``
+        """
+        if self.log_file[3][:-1] != '[Global flags]':
+            raise Exception('check_global_flags: ' + self.sample + ' defining the global flags did not seem to work')
+
+    def check_final_section(self):
+        """
+        Method to run checks on the final section part of the log, including the following methods:
+
+        - ``check_final_section_length``
+        - ``check_final_section_success``
+        - ``check_final_section_others``
+
+        """
+        # DONE
+        self.check_final_section_length()
+        self.check_final_section_others()
+
+    def check_global_flags(self):
+        """
+        Method to run checks on the global flags part of the log, including the following methods:
+
+        - ``check_global_flags_length``
+        - ``check_global_flags_variables``
+        """
+        # DONE
+        self.check_global_flags_length()
+        self.check_global_flags_variables()
+
+    def check_applybqsr(self):
+        """
+        Method to run checks on the ApplyBQSR part of the log, including the following methods:
+
+        - ``check_applybqsr_engine``
+        - ``check_applybqsr_quantization``
+        """
+
+        self.check_applybqsr_engine()
+        self.check_applybqsr_quantization()
+
+    def check_featuremanager(self):
+        """
+        Method to run checks on the feature manager part of the log, including the following methods:
+
+        - ``check_featuremanager_files``
+        """
+
+        self.check_featuremanager_files()
+
+    def check_progressmeter(self):
+        """
+        Method to run checks on the progress meter part of the log, including the following methods:
+
+        - ``check_progressmeter_len``
+        - ``check_progressmeter_start_end``
+        """
+
+        self.check_progressmeter_len()
+        self.check_progressmeter_start_end()
+
+    def check_final_section_length(self):
+        """
+        Method to check the length of the final section
+
+        - The length should be 11
+        """
+        if len(self.final_section) != 9:
+            raise Exception('check_final_section_length: ' + self.sample + ' does not have the expected number of rows')
+
+    def check_final_section_others(self):
+        """
+        Check that the other rows also have the expected output, in particular we check that the following strings are
+        present:
+
+        - ``PSYoungGen``
+        - ``ParOldGen``
+        - ``Metaspace``
+        """
+        s = ''.join(self.final_section[1:])
+        if len(re.findall(r"\bPSYoungGen\b|\bParOldGen\b|\bMetaspace\b", s)) != 3:
+            raise Exception('check_final_section_others: ' + self.sample + ' not all the expected fields are present '
+                                                                           'in the last part of the log')
+
+    def check_global_flags_length(self):
+        """
+        Method to check the length of the global flags section
+
+        - The length should be 722
+        """
+        if len(self.global_flags) != 722:
+            raise Exception('check_global_flags_length: ' + self.sample + ' does not have the expected number of rows')
+
+    def check_global_flags_variables(self):
+        """
+        Method to check that all the global flags are set as expected
+
+        - We compare the global flags with that of the template (check template_recaldat.log file for more details)
+        - There are only 5 rows which are not supposed to be equal (they changed based on the computer session used)
+            - ``uintx InitialHeapSize``
+            - ``uintx MaxHeapSize``
+            - ``uintx MaxNewSize``
+            - ``uintx NewSize``
+            - ``uintx OldSize``
+        - All other variables should be the same
+        """
+        for row in range(len(self.global_flags)):
+            original = self.global_flags[row]
+            template = self.log_template[row]
+
+            if (original != template) & (row not in [257, 304, 316, 349, 360]):
+                raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
+                                                                                 'flags')
+
+    def check_progressmeter_len(self):
+        """
+        Check correct length of this section:
+
+        - For paired and single it should be 4 rows
+
+        """
+        if len(self.progressmeter) != 4:
+            raise Exception('check_progressmeter_len: ' + self.sample + ' does not have the right number of rows')
+
+    def check_progressmeter_start_end(self):
+        """
+        Check correct start and end statements
+
+        - ``Starting traversal``
+        - ``Traversal complete. Processed 180757 total reads in 2.6 minutes.``
+        - We check that the strings are correct and also that the numeric part is larger than 0
+        """
+        start_text = self.progressmeter[0][-19:-1]
+        end_text = re.findall('Traversal complete. Processed', self.progressmeter[-1][15:])
+        end_nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.progressmeter[-1][15:])))
+        if ((start_text != 'Starting traversal') |
+            (len(end_text) != 1) |
+            (any(i <=0 for i in end_nums))):
+            raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
+                                                                              'end statements in the ProgressMeter '
+                                                                              'section')
+
+    def check_featuremanager_files(self):
+        """
+        Check that the files used to extract the features are the correct ones. The files which should be used are:
+
+        - ``hg38_resources/wgs_calling_regions.hg38.interval_list``
+        """
+
+        list_ = ['hg38_resources/wgs_calling_regions.hg38.interval_list']
+
+        s_check = ''.join(['\\' + 'b' + i + '\\' + 'b|' for i in list_])[:-1]
+        s = ''.join(self.featuremanager)
+        if len(re.findall(s_check, s)) != len(list_):
+            raise Exception('check_featuremanager_files: ' + self.sample + ' did not get the features from the correct '
+                                                                           'input files')
+
+    def check_applybqsr_engine(self):
+        """
+        Method to check that the applybqsr engine starts and ends correctly. We make sure that the following
+        are present:
+
+        - ``Initializing engine``
+        - ``Done initializing engine``
+        - ``Shutting down engine``
+        """
+        t1 = self.applybqsr[19][-20:-1] != 'Initializing engine'
+        t2 = self.applybqsr[20][-25:-1] != 'Done initializing engine'
+        t3 = self.applybqsr[-1][-21:-1] != 'Shutting down engine'
+
+        if t1 | t2 | t3:
+            raise Exception('check_applybqsr_engine: ' + self.sample + ' applybqsr engine did not work '
+                                                                              'properly')
+
+    def check_applybqsr_quantization(self):
+        """
+        Method to check that the applybqsr engine generates the report well and that the quantization passes
+        """
+        t1 = self.applybqsr[-2][-22:-2] != 'WellformedReadFilter'
+
+        if t1:
+            raise Exception('check_applybqsr_quantization: ' + self.sample + ' the quantization part did not '
+                                                                                    'work properly')
 
 
 

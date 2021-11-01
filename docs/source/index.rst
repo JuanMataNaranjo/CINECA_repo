@@ -12,4 +12,5 @@ Include something here which might help to understand what we are doing with thi
     Bwa
     SamSort
     BaseRecalibrator
+    ApplyBQSR
 
