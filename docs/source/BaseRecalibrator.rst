@@ -1,6 +1,6 @@
-====================
+==========================
 Base Recalibrator Class
-====================
+==========================
 
 Information about the BaseRecalibrator class
 

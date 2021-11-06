@@ -2,6 +2,9 @@ from abc import ABCMeta, abstractmethod
 import re
 import numpy as np
 import pandas as pd
+import os
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
 
 class LogMain(metaclass=ABCMeta):
@@ -31,7 +34,6 @@ class Bwa(LogMain):
     """
     # TODO: Can we somehow include the numbers that the log provides us for anything? (e.g. percentiles, mean, std, ...)
     # TODO: What is the threshold for "enough pairs"?
-    # TODO: Check if the output expected actually exists
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -74,7 +76,9 @@ class Bwa(LogMain):
         - ``check_candidate_pairs()``
         - ``check_not_enough_pairs(threshold=100)``
         - ``check_enough_pairs(threshold=100)``
+        - ``check_output_exists()``
         """
+        print(os.getcwd())
         self.check_lines()
         self.check_num_sequence()
         self.check_consistency()
@@ -83,6 +87,15 @@ class Bwa(LogMain):
         self.check_candidate_pairs()
         self.check_not_enough_pairs(threshold=100)
         self.check_enough_pairs(threshold=100)
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_lines(self):
         """
@@ -260,9 +273,19 @@ class Fastqc(LogMain):
 
         - ``check_lines()``
         - ``check_start_end()``
+        - ``check_output_exists()``
         """
         self.check_lines()
         self.check_start_end()
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_lines(self):
         """
@@ -298,8 +321,6 @@ class SamSort(LogMain):
     """
     This class will check the samsort log
     """
-    # TODO: Make sure check_unmated makes sense (I think the mate them later on so we should expect them to be 0 anyway
-    #  but not sure)
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -344,6 +365,7 @@ class SamSort(LogMain):
         - ``check_rows()``
         - ``check_table_sums()``
         - ``check_removals()``
+        - ``check_output_exists()``
         """
         self.check_lines()
         self.check_start_statement()
@@ -355,6 +377,15 @@ class SamSort(LogMain):
         self.check_rows()
         self.check_table_sums()
         self.check_removals()
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_lines(self):
         """
@@ -500,6 +531,8 @@ class BaseRecalibrator(LogMain):
     """
     This class will check the baserecalibrator log
     """
+    # TODO: Understand which errors can be turned into warnings and check versions
+    # TODO: Check the chromosomes that are being evaluated
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -607,6 +640,7 @@ class BaseRecalibrator(LogMain):
         - ``check_baserecalibrator()``
         - ``check_featuremanager()``
         - ``check_progressmeter()``
+        - ``check_output_exists()``
         """
 
         self.check_running()
@@ -617,6 +651,15 @@ class BaseRecalibrator(LogMain):
         self.check_baserecalibrator()
         self.check_featuremanager()
         self.check_progressmeter()
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_running(self):
         """
@@ -656,7 +699,6 @@ class BaseRecalibrator(LogMain):
 
         """
 
-        self.check_final_section_length()
         self.check_final_section_success()
         self.check_final_section_others()
 
@@ -686,7 +728,6 @@ class BaseRecalibrator(LogMain):
         self.check_baserecalibrator_filters()
         self.check_baserecalibrator_quantization()
 
-
     def check_featuremanager(self):
         """
         Method to run checks on the feature manager part of the log, including the following methods:
@@ -695,8 +736,6 @@ class BaseRecalibrator(LogMain):
         """
 
         self.check_featuremanager_files()
-
-
 
     def check_progressmeter(self):
         """
@@ -708,15 +747,6 @@ class BaseRecalibrator(LogMain):
 
         self.check_progressmeter_len()
         self.check_progressmeter_start_end()
-
-    def check_final_section_length(self):
-        """
-        Method to check the length of the final section
-
-        - The length should be 11
-        """
-        if len(self.final_section) != 11:
-            raise Exception('check_final_section_length: ' + self.sample + ' does not have the expected number of rows')
 
     def check_final_section_success(self):
         """
@@ -733,7 +763,7 @@ class BaseRecalibrator(LogMain):
 
         - ``PSYoungGen``
         - ``ParOldGen``
-        -  ``Metaspace``
+        - ``Metaspace``
         """
         s = ''.join(self.final_section[3:])
         if len(re.findall(r"\bPSYoungGen\b|\bParOldGen\b|\bMetaspace\b", s)) != 3:
@@ -793,12 +823,16 @@ class BaseRecalibrator(LogMain):
         start_text = self.progressmeter[0][-19:-1]
         end_text = re.findall('Traversal complete. Processed', self.progressmeter[-1][15:])
         end_nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.progressmeter[-1][15:])))
-        if ((start_text != 'Starting traversal') |
-            (len(end_text) != 1) |
-            (any(i <=0 for i in end_nums))):
+
+        t1 = start_text != 'Starting traversal'
+        t2 = len(end_text) != 1
+        t3 = any(i <=0 for i in end_nums)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1*'t1', t2*'t2', t3*'t3']))
             raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
                                                                               'end statements in the ProgressMeter '
-                                                                              'section')
+                                                                              'section. Issue in condition/s: ', error)
 
     def check_featuremanager_files(self):
         """
@@ -835,8 +869,9 @@ class BaseRecalibrator(LogMain):
         t3 = self.baserecalibrator[-1][-21:-1] != 'Shutting down engine'
 
         if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
             raise Exception('check_baserecalibrator_engine: ' + self.sample + ' baserecalibrator engine did not work '
-                                                                              'properly')
+                                                                              'properly. Issue in condition/s: ', error)
 
     def check_baserecalibrator_covariates(self):
         """
@@ -853,7 +888,9 @@ class BaseRecalibrator(LogMain):
         t4 = self.baserecalibrator[25][-15:-1] != 'CycleCovariate'
 
         if t1 | t2 | t3 | t4:
-            raise Exception('check_baserecalibrator_engine: ' + self.sample + ' not all the covariates have been used')
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3', t4 * 't4']))
+            raise Exception('check_baserecalibrator_engine: ' + self.sample + ' not all the covariates have been used. '
+                                                                              'Issue in condition/s: ', error)
 
     def check_baserecalibrator_filters(self):
         """
@@ -874,8 +911,10 @@ class BaseRecalibrator(LogMain):
         t6 = self.baserecalibrator[32][-22:-2] != 'WellformedReadFilter'
 
         if t1 | t2 | t3 | t4 | t5 | t6:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3', t4 * 't4', t5 * 't5', t6 * 't6']))
             raise Exception('check_baserecalibrator_filters: ' + self.sample + ' not all the correct filters have been '
-                                                                               'used on the base recalibrator')
+                                                                               'used on the base recalibrator. '
+                                                                               'Issue in condition/s: ', error)
 
     def check_baserecalibrator_quantization(self):
         """
@@ -894,14 +933,17 @@ class BaseRecalibrator(LogMain):
         t5 = int(re.findall(r'\d+', self.baserecalibrator[36][-54:-1])[0]) < 0
 
         if t1 | t2 | t3 | t4 | t5:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3', t4 * 't4', t5 * 't5']))
             raise Exception('check_baserecalibrator_quantization: ' + self.sample + ' the quantization part did not '
-                                                                                    'work properly')
+                                                                                    'work properly. Issue in '
+                                                                                    'condition/s: ', error)
 
 
 class ApplyBQSR(LogMain):
     """
     This class will check the Apply BQSR log
     """
+    # TODO: Check the chromosomes that are being evaluated
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -1006,6 +1048,7 @@ class ApplyBQSR(LogMain):
         - ``check_applybqsr()``
         - ``check_featuremanager()``
         - ``check_progressmeter()``
+        - ``check_output_exists()``
         """
 
         self.check_running()
@@ -1016,6 +1059,15 @@ class ApplyBQSR(LogMain):
         self.check_applybqsr()
         self.check_featuremanager()
         self.check_progressmeter()
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_running(self):
         """
@@ -1054,7 +1106,6 @@ class ApplyBQSR(LogMain):
         - ``check_final_section_others``
 
         """
-        # DONE
         self.check_final_section_length()
         self.check_final_section_others()
 
@@ -1065,7 +1116,6 @@ class ApplyBQSR(LogMain):
         - ``check_global_flags_length``
         - ``check_global_flags_variables``
         """
-        # DONE
         self.check_global_flags_length()
         self.check_global_flags_variables()
 
@@ -1076,7 +1126,6 @@ class ApplyBQSR(LogMain):
         - ``check_applybqsr_engine``
         - ``check_applybqsr_quantization``
         """
-
         self.check_applybqsr_engine()
         self.check_applybqsr_quantization()
 
@@ -1174,12 +1223,16 @@ class ApplyBQSR(LogMain):
         start_text = self.progressmeter[0][-19:-1]
         end_text = re.findall('Traversal complete. Processed', self.progressmeter[-1][15:])
         end_nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.progressmeter[-1][15:])))
-        if ((start_text != 'Starting traversal') |
-            (len(end_text) != 1) |
-            (any(i <=0 for i in end_nums))):
+
+        t1 = start_text != 'Starting traversal'
+        t2 = len(end_text) != 1
+        t3 = any(i <=0 for i in end_nums)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
             raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
                                                                               'end statements in the ProgressMeter '
-                                                                              'section')
+                                                                              'section. Issue in condition/s: ', error)
 
     def check_featuremanager_files(self):
         """
@@ -1210,8 +1263,9 @@ class ApplyBQSR(LogMain):
         t3 = self.applybqsr[-1][-21:-1] != 'Shutting down engine'
 
         if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
             raise Exception('check_applybqsr_engine: ' + self.sample + ' applybqsr engine did not work '
-                                                                              'properly')
+                                                                              'properly. Issue in condition/s: ', error)
 
     def check_applybqsr_quantization(self):
         """
@@ -1224,9 +1278,335 @@ class ApplyBQSR(LogMain):
                                                                                     'work properly')
 
 
+class HaploType(LogMain):
+    # TODO: Improve debugging process
+    """
+    This class will check the Haplotype log
+    """
 
+    def __init__(self, path, sample):
+        self.log_file = None
+        self.path = path
+        self.sample = sample
+        self.paired = self.single_paired()
+        self.read_log()
+        self.haplotype = []
+        self.featuremanager = []
+        self.progressmeter = []
+        self.warning = []
+        self.split_log()
 
+    def single_paired(self, table_path='data/fastq.csv'):
+        """
+        Check whether the sample is paired (R1 and R2) or single (only R1). This method is relevant
+        for cases in which two different log files are generated
+        :param table_path: Path in which we can find the fastq.csv (file containing this information)
+        :return: Boolean value which will be stored as part of the class variables
+        """
 
+        df = pd.read_csv(table_path)
 
+        bool_ = len(df[df.Sample == self.sample]) == 2
 
+        return bool_
 
+    def read_log(self):
+        """
+        Method to store the log file as part of the class variables
+        """
+        with open(self.path + self.sample + '_sort_nodup.g.vcf.log') as f:
+            self.log_file = f.readlines()
+
+    def split_log(self):
+        """
+        This method is used to split the log into smaller and more manageable files (due to the large size of the file
+        its better to split before to simplify our life). The outputs are stored as part of the class variables
+
+        - ``self.haplotype``: Information on Haplotype
+        - ``self.featuremanager``: Information on FeatureManager
+        - ``self.progressmeter``: Information on the ProgressMeter
+        """
+
+        haplotype_bool = False
+        featuremanager_bool = False
+        progressmeter_bool = False
+        warn_bool = False
+
+        for row in self.log_file:
+
+            if bool(re.search(r'INFO  HaplotypeCaller', row)):
+                haplotype_bool = True
+
+            if bool(re.search(r'read\(s\) filtered by:', row)):
+                haplotype_bool = True
+
+            if bool(re.search(r'INFO  ProgressMeter', row)):
+                progressmeter_bool = True
+
+            if bool(re.search(r'INFO  FeatureManager', row)):
+                featuremanager_bool = True
+
+            if bool(re.search(r' WARN ', row)):
+                warn_bool = True
+
+            if haplotype_bool:
+                self.haplotype.append(row)
+                haplotype_bool = False
+            elif featuremanager_bool:
+                self.featuremanager.append(row)
+                featuremanager_bool = False
+            elif progressmeter_bool:
+                self.progressmeter.append(row)
+                progressmeter_bool = False
+            elif warn_bool:
+                self.warning.append(row)
+                warn_bool = False
+
+    def check_log(self):
+        """
+        This method will run all the methods implemented for this class
+        - ``check_running()``
+        - ``check_correct_sample()``
+        - ``check_haplotype()``
+        - ``check_featuremanager()``
+        - ``check_warnings()``
+        - ``check_progressmeter()``
+        - ``check_output_exists()``
+        """
+
+        self.check_running()
+        self.check_correct_sample()
+        self.check_haplotype()
+        self.check_featuremanager()
+        self.check_warnings()
+        self.check_progressmeter()
+        self.check_output_exists()
+
+    def check_output_exists(self, file='data/OUTPUT/something.sam'):
+        """
+        Method to check that the output has been generated correctly
+        """
+        file_exist = not os.path.exists(file)
+        if file_exist:
+            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
+
+    def check_running(self):
+        """
+        Check that the log file contains a row written running:
+
+        - ``Running:``
+        """
+        if self.log_file[1][:-1] != 'Running:':
+            raise Exception('check_running: ' + self.sample + ' did not start running...')
+
+    def check_correct_sample(self):
+        """
+        Make sure that the file that is being processed is the actual sample
+
+        - If we are processing sample HSRR062650 we should only have this value in the command line string
+        """
+        if len(re.findall(self.sample, self.log_file[2][:-1])) == 0:
+            raise Exception('check_correct_sample: ' + self.sample + ' should be processed however another sample has '
+                                                                     'been processed instead')
+
+    def check_featuremanager(self):
+        """
+        Method to run checks on the feature manager part of the log, including the following methods:
+
+        - ``check_featuremanager_files``
+        """
+
+        self.check_featuremanager_files()
+
+    def check_haplotype(self):
+        """
+        Method to check everything regarding the INFO Haplotype part. Methods included are:
+
+        - ``check_haplotype_engine``
+        - ``check_haplotype_filters``
+        """
+
+        self.check_haplotype_engine()
+        self.check_haplotype_filters()
+
+    def check_warnings(self):
+        # TODO: How shall we interpret these warnings?
+        """
+        There are multiple warnings in the log file. We will make sure that these warnings are serious or not
+
+        """
+        self.warning_stats()
+
+    def check_progressmeter(self):
+        """
+        Method to run checks on the progress meter part of the log, including the following methods:
+
+        - ``check_progressmeter_chromosomes``
+        - ``check_progressmeter_start_end``
+        """
+
+        self.check_progressmeter_chromosomes()
+        self.check_progressmeter_start_end()
+
+    def warning_stats(self):
+        """
+        Method to plot some insights on the warning outputs
+        """
+
+        DepthPerSampleHC = []
+        summary_depth = defaultdict(int)
+        StrandBiasBySample = []
+        summary_strand = defaultdict(int)
+        InbreedingCoeff = []
+        summary_inbreed = defaultdict(int)
+        for row in self.warning:
+            if bool(re.search(r'DepthPerSampleHC', row)):
+                DepthPerSampleHC.append(row)
+                summary_depth[re.findall(r'chr\d+', row)[0]] += 1
+            elif bool(re.search(r'StrandBiasBySample', row)):
+                StrandBiasBySample.append(row)
+                summary_strand[re.findall(r'chr\d+', row)[0]] += 1
+            elif bool(re.search(r'InbreedingCoeff', row)):
+                InbreedingCoeff.append(row)
+                summary_inbreed[re.findall(r'chr\d+', row)[0]] += 1
+
+        plt.figure(figsize=(12,8))
+        plt.bar(range(len(summary_depth)), list(summary_depth.values()), align='center')
+        plt.xticks(range(len(summary_depth)), list(summary_depth.keys()))
+        plt.ylabel('Number of Errors')
+        plt.ylabel('Chromosomes affected')
+        plt.title(self.sample + '\n' + ' WARN  DepthPerSampleHC')
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.bar(range(len(summary_strand)), list(summary_strand.values()), align='center')
+        plt.xticks(range(len(summary_strand)), list(summary_strand.keys()))
+        plt.ylabel('Number of Errors')
+        plt.ylabel('Chromosomes affected')
+        plt.title(self.sample + '\n' + ' WARN  StrandBiasBySample')
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.bar(range(len(summary_inbreed)), list(summary_inbreed.values()), align='center')
+        plt.xticks(range(len(summary_inbreed)), list(summary_inbreed.keys()))
+        plt.ylabel('Number of Errors')
+        plt.ylabel('Chromosomes affected')
+        plt.title(self.sample + '\n' + ' WARN  InbreedingCoeff')
+        plt.show()
+
+    def check_haplotype_engine(self):
+        """
+        Method to check that the base haplotype engine starts and ends correctly. We make sure that the following
+        are present:
+
+        - ``Initializing engine``
+        - ``Done initializing engine``
+        - ``Shutting down engine``
+        """
+        t1 = self.haplotype[19][-20:-1] != 'Initializing engine'
+        t2 = self.haplotype[20][-25:-1] != 'Done initializing engine'
+        t3 = self.haplotype[-1][-21:-1] != 'Shutting down engine'
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            raise Exception('check_haplotype_engine: ' + self.sample + ' haplotype engine did not work properly. '
+                                                                       'Issue in condition/s: ', error)
+
+    def check_haplotype_filters(self):
+        """
+        Method to check that the haplotype engine has execited the correct filters:
+
+        - ``MappingQualityAvailableReadFilter``
+        - ``MappedReadFilter``
+        - ``NotSecondaryAlignmentReadFilter``
+        - ``NotDuplicateReadFilter``
+        - ``PassesVendorQualityCheckReadFilter``
+        - ``NonZeroReferenceLengthAlignmentReadFilter``
+        - ``GoodCigarReadFilter``
+        - ``WellformedReadFilter``
+        """
+        t1 = self.haplotype[25][-35:-2] != 'MappingQualityAvailableReadFilter'
+        t2 = self.haplotype[26][-18:-2] != 'MappedReadFilter'
+        t3 = self.haplotype[27][-33:-2] != 'NotSecondaryAlignmentReadFilter'
+        t4 = self.haplotype[28][-24:-2] != 'NotDuplicateReadFilter'
+        t5 = self.haplotype[29][-36:-2] != 'PassesVendorQualityCheckReadFilter'
+        t6 = self.haplotype[30][-43:-2] != 'NonZeroReferenceLengthAlignmentReadFilter'
+        t7 = self.haplotype[31][-21:-2] != 'GoodCigarReadFilter'
+        t8 = self.haplotype[32][-22:-2] != 'WellformedReadFilter'
+
+        if t1 | t2 | t3 | t4 | t5 | t6 | t7 | t8:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3', t4 * 't4', t5 * 't5',
+                                           t6 * 't6', t7 * 't7', t8 * 't8']))
+            raise Exception('check_haplotype_filters: ' + self.sample + ' not all the correct filters have been '
+                                                                               'used on the haplotype. '
+                                                                        'Issue in condition/s: ', error)
+
+    def check_featuremanager_files(self):
+        """
+        Check that the files used to extract the features are the correct ones. The files which should be used are:
+
+        - ``hg38_resources/wgs_calling_regions.hg38.interval_list``
+        """
+
+        list_ = ['hg38_resources/wgs_calling_regions.hg38.interval_list']
+
+        s_check = ''.join(['\\' + 'b' + i + '\\' + 'b|' for i in list_])[:-1]
+        s = ''.join(self.featuremanager)
+        if len(re.findall(s_check, s)) != 1:
+            raise Exception('check_featuremanager_files: ' + self.sample + ' did not get the features from the correct '
+                                                                           'input files')
+
+    def check_progressmeter_start_end(self):
+        """
+        Check correct start and end statements
+        - ``Starting traversal``
+        - ``Traversal complete. Processed 180757 total reads in 2.6 minutes.``
+        - We check that the strings are correct and also that the numeric part is larger than 0
+        """
+        start_text = self.progressmeter[0][-19:-1]
+        end_text = re.findall('Traversal complete. Processed', self.progressmeter[-1][15:])
+        end_nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.progressmeter[-1][15:])))
+
+        t1 = start_text != 'Starting traversal'
+        t2 = len(end_text) != 1
+        t3 = any(i <=0 for i in end_nums)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
+                                                                              'end statements in the ProgressMeter '
+                                                                              'section. Issue in condition/s: ', error)
+
+    def check_progressmeter_chromosomes(self):
+        # TODO: For sure we can implement better tests in this method
+        """
+        Check all chromosomes are present in the progressmeter section
+        - We also take the chance to check all chromsome ids are positive integers
+        - We also check that the regions are also positive integers
+        """
+        # Split the data for further analysis
+        chromosome = []
+        chromosome_id = []
+        regions = []
+
+        chr_temp = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+                    'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22',
+                    'chrX', 'chrY']
+
+        for row in self.progressmeter[2:-1]:
+            _, _, _, _, chrom, _, region, _ = row.split()
+            chrom, chrom_id = chrom.split(':')
+            chromosome.append(chrom)
+            chromosome_id.append(int(chrom_id))
+            regions.append(int(region))
+
+        t1 = list(dict.fromkeys(chromosome)) != chr_temp
+        t2 = any(i < 0 for i in chromosome_id)
+        t3 = any(i < 0 for i in regions)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            raise Exception('check_progressmeter_chromosomes: ' + self.sample + ' has some strange chromosome values '
+                                                                                'or is missing some chromosomes to be '
+                                                                                'inspected. Issue in '
+                                                                                'condition/s: ', error)
