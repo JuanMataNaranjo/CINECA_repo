@@ -11,6 +11,7 @@ Include something here which might help to understand what we are doing with thi
     Fastqc
     Bwa
     SamSort
+    Parent
     BaseRecalibrator
     ApplyBQSR
     HaploType
