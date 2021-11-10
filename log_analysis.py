@@ -27,13 +27,14 @@ class LogMain(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
+    # TODO: Look at the format of the initial champiaons (name consistency)
+
 
 class Bwa(LogMain):
     """
     This class will check the bwa log
     """
-    # TODO: Can we somehow include the numbers that the log provides us for anything? (e.g. percentiles, mean, std, ...)
-    # TODO: What is the threshold for "enough pairs"?
+    # TODO: Review the complete class since it changes a lot...
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -78,7 +79,6 @@ class Bwa(LogMain):
         - ``check_enough_pairs(threshold=100)``
         - ``check_output_exists()``
         """
-        print(os.getcwd())
         self.check_lines()
         self.check_num_sequence()
         self.check_consistency()
@@ -291,14 +291,14 @@ class Fastqc(LogMain):
         """
         Check correct number of lines in log
 
-        - We expect 22 lines in the log
+        - We expect 21 lines in the log
         """
         if self.log_file_1:
-            if len(self.log_file_1) != 22:
+            if len(self.log_file_1) != 21:
                 raise Exception('check_lines: ' + self.sample + '_R1 does not have the correct number of lines')
 
         if self.log_file_2:
-            if len(self.log_file_2) != 22:
+            if len(self.log_file_2) != 21:
                 raise Exception('check_lines: ' + self.sample + '_R2 does not have the correct number of lines')
 
     def check_start_end(self):
@@ -396,10 +396,10 @@ class SamSort(LogMain):
         """
         if self.paired:
             if len(self.log_file) != 15:
-                raise Exception('check_lines: ' + self.sample + ' has the wrong number of log lines')
+                raise Exception('check_lines: ' + self.sample + ' which is paired has the wrong number of log lines')
         else:
             if len(self.log_file) != 14:
-                raise Exception('check_lines: ' + self.sample + ' has the wrong number of log lines')
+                raise Exception('check_lines: ' + self.sample + ' which is single has the wrong number of log lines')
 
     def check_start_statement(self):
         """
@@ -510,7 +510,7 @@ class SamSort(LogMain):
 
         # Perform the summation accordingly
         sum_ = lambda x: np.isclose(sum(x[:-1]), x[-1], atol=0.001)
-        if any(list(~sum_(np.array(list_)))):
+        if any(list(~sum_(np.array(list_))[:3])+list(~sum_(np.array(list_))[4:])):
             raise Exception('check_table_sums: ' + self.sample + ' has a mismatch in the total sums')
 
     def check_removals(self):
@@ -520,11 +520,15 @@ class SamSort(LogMain):
         """
         nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.log_file[-2])))
         text = re.sub(r"\d+", "", self.log_file[-2])[:-1]
+
+        t1 = int(nums[0]) != self.dups
+        t2 = any(int(i) < 0 for i in nums)
+
         # noinspection PyTypeChecker
-        if ((text != 'samblaster: Removed         of      (.%) total read ids as duplicates using k memory in .S CPU seconds and S wall time.') |
-            (int(nums[0]) != self.dups) |
-            (any(int(i) < 0 for i in nums))):
-            raise Exception('check_removals: ' + self.sample + ' has some issue (text or numeric related)')
+        if t1 | t2:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2']))
+            raise Exception('check_removals: ' + self.sample + ' has some issue (text or numeric related). Issue in '
+                                                               'condition/s: ' + error)
 
 
 class BaseRecalibrator(LogMain):
@@ -741,11 +745,11 @@ class BaseRecalibrator(LogMain):
         """
         Method to run checks on the progress meter part of the log, including the following methods:
 
-        - ``check_progressmeter_len``
+        - ``check_progressmeter_chromosomes``
         - ``check_progressmeter_start_end``
         """
 
-        self.check_progressmeter_len()
+        self.check_progressmeter_chromosomes()
         self.check_progressmeter_start_end()
 
     def check_final_section_success(self):
@@ -800,6 +804,42 @@ class BaseRecalibrator(LogMain):
                 raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
                                                                                  'flags')
 
+    def check_progressmeter_chromosomes(self):
+        # TODO: For sure we can implement better tests in this method
+        """
+        Check all chromosomes are present in the progressmeter section
+        - We also take the chance to check all chromsome ids are positive integers
+        - We also check that the regions are also positive integers
+        """
+        # Split the data for further analysis
+        chromosome = []
+        chromosome_id = []
+        regions = []
+
+        chr_temp = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+                    'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22',
+                    'chrX', 'chrY']
+
+        for row in self.progressmeter[2:-1]:
+            _, _, _, _, chrom, _, region, _ = row.split()
+            chrom, chrom_id = chrom.split(':')
+            chromosome.append(chrom)
+            chromosome_id.append(int(chrom_id))
+            regions.append(int(region))
+
+        t1 = list(dict.fromkeys(chromosome)) != chr_temp
+        t2 = any(i < 0 for i in chromosome_id)
+        t3 = any(i < 0 for i in regions)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            if t1:
+                error = error + ' --> ' + list(set(chr_temp).difference(set(list(dict.fromkeys(chromosome)))))[0]
+            raise Exception('check_progressmeter_chromosomes: ' + self.sample + ' has some strange chromosome values '
+                                                                                'or is missing some chromosomes to be '
+                                                                                'inspected. Issue in '
+                                                                                'condition/s: ', error)
+
     def check_progressmeter_len(self):
         """
         Check correct length of this section:
@@ -826,7 +866,7 @@ class BaseRecalibrator(LogMain):
 
         t1 = start_text != 'Starting traversal'
         t2 = len(end_text) != 1
-        t3 = any(i <=0 for i in end_nums)
+        t3 = any(i <= 0 for i in end_nums)
 
         if t1 | t2 | t3:
             error = ','.join(filter(None, [t1*'t1', t2*'t2', t3*'t3']))
@@ -929,8 +969,8 @@ class BaseRecalibrator(LogMain):
         t1 = self.baserecalibrator[33][-40:-1] != 'Calculating quantized quality scores...'
         t2 = self.baserecalibrator[34][-32:-1] != 'Writing recalibration report...'
         t3 = self.baserecalibrator[35][-9:-1] != '...done!'
-        t4 = re.sub(r'[0-9]', '', self.baserecalibrator[36][-54:-1]) != 'BaseRecalibrator was able to recalibrate  reads'
-        t5 = int(re.findall(r'\d+', self.baserecalibrator[36][-54:-1])[0]) < 0
+        t4 = re.sub(r'[0-9]', '', self.baserecalibrator[36][38:-1]) != 'BaseRecalibrator was able to recalibrate  reads'
+        t5 = int(re.findall(r'\d+', self.baserecalibrator[36][38:-1])[0]) < 0
 
         if t1 | t2 | t3 | t4 | t5:
             error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3', t4 * 't4', t5 * 't5']))
@@ -1142,11 +1182,11 @@ class ApplyBQSR(LogMain):
         """
         Method to run checks on the progress meter part of the log, including the following methods:
 
-        - ``check_progressmeter_len``
+        - ``check_progressmeter_chromosomes``
         - ``check_progressmeter_start_end``
         """
 
-        self.check_progressmeter_len()
+        self.check_progressmeter_chromosomes()
         self.check_progressmeter_start_end()
 
     def check_final_section_length(self):
@@ -1202,15 +1242,41 @@ class ApplyBQSR(LogMain):
                 raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
                                                                                  'flags')
 
-    def check_progressmeter_len(self):
+    def check_progressmeter_chromosomes(self):
+        # TODO: For sure we can implement better tests in this method
         """
-        Check correct length of this section:
-
-        - For paired and single it should be 4 rows
-
+        Check all chromosomes are present in the progressmeter section
+        - We also take the chance to check all chromsome ids are positive integers
+        - We also check that the regions are also positive integers
         """
-        if len(self.progressmeter) != 4:
-            raise Exception('check_progressmeter_len: ' + self.sample + ' does not have the right number of rows')
+        # Split the data for further analysis
+        chromosome = []
+        chromosome_id = []
+        regions = []
+
+        chr_temp = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+                    'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22',
+                    'chrX', 'chrY']
+
+        for row in self.progressmeter[2:-1]:
+            _, _, _, _, chrom, _, region, _ = row.split()
+            chrom, chrom_id = chrom.split(':')
+            chromosome.append(chrom)
+            chromosome_id.append(int(chrom_id))
+            regions.append(int(region))
+
+        t1 = list(dict.fromkeys(chromosome)) != chr_temp
+        t2 = any(i < 0 for i in chromosome_id)
+        t3 = any(i < 0 for i in regions)
+
+        if t1 | t2 | t3:
+            error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            if t1:
+                error = error + ' --> ' + list(set(chr_temp).difference(set(list(dict.fromkeys(chromosome)))))[0]
+            raise Exception('check_progressmeter_chromosomes: ' + self.sample + ' has some strange chromosome values '
+                                                                                'or is missing some chromosomes to be '
+                                                                                'inspected. Issue in '
+                                                                                'condition/s: ', error)
 
     def check_progressmeter_start_end(self):
         """
@@ -1362,7 +1428,7 @@ class HaploType(LogMain):
                 self.warning.append(row)
                 warn_bool = False
 
-    def check_log(self):
+    def check_log(self, plot=True):
         """
         This method will run all the methods implemented for this class
         - ``check_running()``
@@ -1378,7 +1444,7 @@ class HaploType(LogMain):
         self.check_correct_sample()
         self.check_haplotype()
         self.check_featuremanager()
-        self.check_warnings()
+        self.check_warnings(plot=plot)
         self.check_progressmeter()
         self.check_output_exists()
 
@@ -1429,13 +1495,14 @@ class HaploType(LogMain):
         self.check_haplotype_engine()
         self.check_haplotype_filters()
 
-    def check_warnings(self):
+    def check_warnings(self, plot=True):
         # TODO: How shall we interpret these warnings?
         """
         There are multiple warnings in the log file. We will make sure that these warnings are serious or not
 
         """
-        self.warning_stats()
+        if plot:
+            self.warning_stats()
 
     def check_progressmeter(self):
         """
@@ -1462,19 +1529,19 @@ class HaploType(LogMain):
         for row in self.warning:
             if bool(re.search(r'DepthPerSampleHC', row)):
                 DepthPerSampleHC.append(row)
-                summary_depth[re.findall(r'chr\d+', row)[0]] += 1
+                summary_depth[re.findall(r'chr.*:', row)[0][3:-1]] += 1
             elif bool(re.search(r'StrandBiasBySample', row)):
                 StrandBiasBySample.append(row)
-                summary_strand[re.findall(r'chr\d+', row)[0]] += 1
+                summary_strand[re.findall(r'chr.*:', row)[0][3:-1]] += 1
             elif bool(re.search(r'InbreedingCoeff', row)):
                 InbreedingCoeff.append(row)
-                summary_inbreed[re.findall(r'chr\d+', row)[0]] += 1
+                summary_inbreed[re.findall(r'chr.*:', row)[0][3:-1]] += 1
 
-        plt.figure(figsize=(12,8))
+        plt.figure(figsize=(12, 8))
         plt.bar(range(len(summary_depth)), list(summary_depth.values()), align='center')
         plt.xticks(range(len(summary_depth)), list(summary_depth.keys()))
         plt.ylabel('Number of Errors')
-        plt.ylabel('Chromosomes affected')
+        plt.xlabel('Chromosomes affected')
         plt.title(self.sample + '\n' + ' WARN  DepthPerSampleHC')
         plt.show()
 
@@ -1482,7 +1549,7 @@ class HaploType(LogMain):
         plt.bar(range(len(summary_strand)), list(summary_strand.values()), align='center')
         plt.xticks(range(len(summary_strand)), list(summary_strand.keys()))
         plt.ylabel('Number of Errors')
-        plt.ylabel('Chromosomes affected')
+        plt.xlabel('Chromosomes affected')
         plt.title(self.sample + '\n' + ' WARN  StrandBiasBySample')
         plt.show()
 
@@ -1490,7 +1557,7 @@ class HaploType(LogMain):
         plt.bar(range(len(summary_inbreed)), list(summary_inbreed.values()), align='center')
         plt.xticks(range(len(summary_inbreed)), list(summary_inbreed.keys()))
         plt.ylabel('Number of Errors')
-        plt.ylabel('Chromosomes affected')
+        plt.xlabel('Chromosomes affected')
         plt.title(self.sample + '\n' + ' WARN  InbreedingCoeff')
         plt.show()
 
@@ -1606,6 +1673,8 @@ class HaploType(LogMain):
 
         if t1 | t2 | t3:
             error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            if t1:
+                error = error + ' --> ' + list(set(chr_temp).difference(set(list(dict.fromkeys(chromosome)))))[0]
             raise Exception('check_progressmeter_chromosomes: ' + self.sample + ' has some strange chromosome values '
                                                                                 'or is missing some chromosomes to be '
                                                                                 'inspected. Issue in '
