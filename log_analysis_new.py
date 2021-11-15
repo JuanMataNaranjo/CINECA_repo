@@ -34,7 +34,6 @@ class Bwa(LogMain):
     """
     This class will check the bwa log
     """
-    # TODO: Review the complete class since it changes a lot...
 
     def __init__(self, path, sample):
         self.log_file = None
@@ -43,6 +42,10 @@ class Bwa(LogMain):
         self.dict_ = None
         self.paired = self.single_paired()
         self.read_log()
+        self.process = []
+        self.mem_pestat = []
+        self.mem_process_seqs = []
+        self.split_log()
 
     def single_paired(self, table_path='data/fastq.csv'):
         """
@@ -65,13 +68,29 @@ class Bwa(LogMain):
         with open(self.path + self.sample + '.log') as f:
             self.log_file = f.readlines()
 
+    def split_log(self):
+        """
+        This method is used to split the log into smaller and more manageable files (due to the large size of the file
+        its better to split before to simplify our life). The outputs are stored as part of the class variables
+
+        - ``self.process``:
+        - ``self.mem_pestat``:
+        - ``self.mem_process_seqs``:
+        """
+
+        for row in self.log_file:
+            if row[:12] == '[M::process]':
+                self.process.append(row)
+            elif row[:15] == '[M::mem_pestat]':
+                self.mem_pestat.append(row)
+            elif row[:21] == '[M::mem_process_seqs]':
+                self.mem_process_seqs.append(row)
+
     def check_log(self):
         """
         This method will run all the methods implemented for this class
 
-        - ``check_lines()``
-        - ``check_num_sequence()``
-        - ``check_consistency()``
+        - ``check_process()``
         - ``check_start_statement()``
         - ``check_correct_sample()``
         - ``check_candidate_pairs()``
@@ -79,14 +98,11 @@ class Bwa(LogMain):
         - ``check_enough_pairs(threshold=100)``
         - ``check_output_exists()``
         """
-        self.check_lines()
-        self.check_num_sequence()
-        self.check_consistency()
+        self.check_process()
+        self.check_mem_process_seqs()
+        self.check_mem_pestat()
         self.check_start_statement()
         self.check_correct_sample()
-        self.check_candidate_pairs()
-        self.check_not_enough_pairs(threshold=100)
-        self.check_enough_pairs(threshold=100)
         self.check_output_exists()
 
     def check_output_exists(self, file='data/OUTPUT/something.sam'):
@@ -97,32 +113,72 @@ class Bwa(LogMain):
         if file_exist:
             raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
-    def check_lines(self):
-        """
-        Check the number of lines of the log:
+    def _batch(self, iterable, n=1):
+        l = len(iterable)
+        for ndx in range(0, l, n):
+            yield iterable[ndx:min(ndx + n, l)]
 
-        - In case of paired samples (R1 + R2) the log should contain 16 lines
-        - In case of single samples (R1) the log should contain 6 lines
+    def check_process(self):
+        """
+        Check the log file defined as process (which starts with [M::process]. The checks done are:
+
+        ``check_num_sequence``
+        ``check_consistency``
+        """
+        for batch in self._batch(self.process, 2):
+            self.check_num_sequence(batch[0])
+            self.check_consistency(batch)
+
+    def check_mem_process_seqs(self):
+        """
+        Check the log file defined as mem_process_seqs (which starts with [M::mem_process_seqs]. The checks done are:
+
+        """
+        for batch in self.mem_process_seqs:
+            self.check_positive_nums(batch)
+
+    def check_mem_pestat(self):
+        """
+        Check the log file defined as mem_pestat (which starts with [M::mem_pestat]. The checks done are:
+
+        ``check_not_enough_pairs``
+        ``check_enough_pairs``
         """
         if self.paired:
-            if len(self.log_file) != 16:
-                raise Exception('check_lines: ' + self.sample + ' has the wrong number of log lines')
-        else:
-            if len(self.log_file) != 6:
-                raise Exception('check_lines: ' + self.sample + ' has the wrong number of log lines')
 
-    def check_num_sequence(self):
+            batch_nums = []
+            for num, i in enumerate(self.mem_pestat):
+                if i[:27] == '[M::mem_pestat] # candidate':
+                    batch_nums.append(num)
+
+            for i in range(len(batch_nums)-1):
+                batch = self.mem_pestat[batch_nums[i]: batch_nums[i + 1]]
+                self.check_not_enough_pairs(batch)
+                self.check_enough_pairs(batch)
+
+    def check_positive_nums(self, row):
+        """
+        Make sure we are processing a positive number of sequences and the run times are all positive
+
+        - ``[M::process] read 400000 sequences (40000000 bp)...``
+        - 400000 must be a positive number
+        """
+        nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", row)))
+        if any(i <= 0 for i in nums):
+            raise Exception('check_positive_nums: ' + self.sample + ' did not process a positive number of sequences')
+
+    def check_num_sequence(self, row):
         """
         Make sure we are reading a positive number of sequences
 
         - ``[M::process] read 400000 sequences (40000000 bp)...``
         - 400000 must be a positive number
         """
-        seq = re.findall(r'\d+', self.log_file[1])
+        seq = re.findall(r'\d+', row)
         if any(int(i) < 0 for i in seq):
             raise Exception('check_num_sequence: ' + self.sample + ' did not read a positive number of sequences')
 
-    def check_consistency(self):
+    def check_consistency(self, rows):
         """
         Check consistency in terms of single-end and paired-end sequences. This check is only done for paired samples
 
@@ -131,14 +187,14 @@ class Bwa(LogMain):
         - 40000 (in the first line) has to be equal to 0 + 400000 (second line)
         """
         if self.paired:
-            seq1 = int(re.findall(r'\d+', self.log_file[1])[0])
-            seq2 = list(map(int, re.findall(r'\d+', self.log_file[2])))
+            seq1 = int(re.findall(r'\d+', rows[0])[0])
+            seq2 = list(map(int, re.findall(r'\d+', rows[1])))
             if seq1 != sum(seq2):
                 raise Exception('check_consistency: ' + self.sample + ' has inconsistency in terms of paired-end and '
                                                                       'single-end sequences')
         else:
-            seq1 = int(re.findall(r'\d+', self.log_file[1])[0])
-            seq2 = int(re.findall(r'\d+', self.log_file[2])[0])
+            seq1 = int(re.findall(r'\d+', rows[0])[0])
+            seq2 = int(re.findall(r'\d+', rows[0])[0])
             if seq1 != seq2:
                 raise Exception('check_consistency: ' + self.sample + ' has inconsistency in terms of read sequences '
                                                                       'and processed sequences')
@@ -178,19 +234,7 @@ class Bwa(LogMain):
             raise Exception('check_correct_sample: ' + self.sample + ' should be processed however another sample has '
                                                                      'been processed instead')
 
-    def check_candidate_pairs(self):
-        """
-        Check the candidate pairs are being evaluated. This check is only done for paired samples
-
-        - ``[M::mem_pestat] # candidate unique pairs for (FF, FR, RF, RR):``
-        - We make sure that this string is present in the log file
-        """
-        if self.paired:
-            if '[M::mem_pestat] # candidate unique pairs for (FF, FR, RF, RR):' != self.log_file[3][:62]:
-                raise Exception(
-                    'check_candidate_pairs: ' + self.sample + ' does not have the expected candidate pairs output')
-
-    def check_not_enough_pairs(self, threshold=100):
+    def check_not_enough_pairs(self, batch, threshold=10):
         """
         Whenever there are not enough pairs the command skips those pairs. This check is only done for paired samples
 
@@ -200,19 +244,19 @@ class Bwa(LogMain):
         :param threshold: Threshold used to define whether we actually have enough pairs
         """
         if self.paired:
-            FF, FR, RF, RR = list(map(int, self.log_file[3][64:-2].strip().split(',')))
+            FF, FR, RF, RR = list(map(int, batch[0][64:-2].strip().split(',')))
             self.dict_ = {'FF':FF,
                      'FR': FR,
                      'RF': RF,
                      'RR': RR}
-            for i in self.log_file[4:-4]:
-                if i[:32] == '[M::mem_pestat] skip orientation':
+            for i in batch[1:]:
+                if (i[:32] == '[M::mem_pestat] skip orientation') & (i[36:-1] == 'as there are not enough pairs'):
                     if self.dict_[i[33:35]] > threshold:
                         raise Exception('check_not_enough_pairs ' + self.sample + ' has skipped an orientation due to low '
                                                                               'number of pairs where this is not the '
                                                                               'case')
 
-    def check_enough_pairs(self, threshold=100):
+    def check_enough_pairs(self, batch, threshold=10):
         """
         When we have enough pairs, there are several things that need to be checked. This check is only done for paired
         samples
@@ -223,14 +267,14 @@ class Bwa(LogMain):
         :param threshold: Threshold used to define whether we actually have enough pairs
         """
         if self.paired:
-            for num, i in enumerate(self.log_file[4:-4]):
+            for num, i in enumerate(batch):
                 if i[-4:-1] == '...':
-                    if self.dict_[self.log_file[4:-4][1][-6:-4]] > threshold:
-                        if ((self.log_file[4 + num + 1][:40] != '[M::mem_pestat] (25, 50, 75) percentile:') |
-                                (self.log_file[4 + num + 2][
+                    if self.dict_[i[-6:-4]] >= threshold:
+                        if ((batch[num + 1][:40] != '[M::mem_pestat] (25, 50, 75) percentile:') |
+                                (batch[num + 2][
                                  :71] != '[M::mem_pestat] low and high boundaries for computing mean and std.dev:') |
-                                (self.log_file[4 + num + 3][:33] != '[M::mem_pestat] mean and std.dev:') |
-                                (self.log_file[4 + num + 4][
+                                (batch[num + 3][:33] != '[M::mem_pestat] mean and std.dev:') |
+                                (batch[num + 4][
                                  :57] != '[M::mem_pestat] low and high boundaries for proper pairs:')):
                             raise Exception('check_enough_pairs ' + self.sample + ' not all the steps of BWA have been '
                                                                                   'executed')
