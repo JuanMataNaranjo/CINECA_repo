@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import subprocess
 
 
 class LogMain(metaclass=ABCMeta):
@@ -28,6 +29,56 @@ class LogMain(metaclass=ABCMeta):
         raise NotImplementedError()
 
     # TODO: Look at the format of the initial champiaons (name consistency)
+
+
+class Overall:
+    """
+    Different to the next classes, this class will look at the baseline samples to check that things are in order,
+    i.e. this class will not use the logs
+    Due to the large size of files, we will directly call the functions using the terminal, without reading data into
+    python
+    """
+
+    def __init__(self, sample, path):
+        self.sample = sample
+        self.path = path
+        self.paired = self.single_paired()
+
+    def single_paired(self, table_path='data/fastq.csv'):
+        """
+        Check whether the sample is paired (R1 and R2) or single (only R1). This method is relevant
+        for cases in which two different log files are generated
+        :param table_path: Path in which we can find the fastq.csv (file containing this information)
+        :return: Boolean value which will be stored as part of the class variables
+        """
+
+        df = pd.read_csv(table_path)
+
+        bool_ = len(df[df.Sample == self.sample]) == 2
+
+        return bool_
+
+    def check_sample_length(self):
+        """
+        Check that the sample has the correct length:
+
+        - All have to be multiple of 4
+        - If the sample is paired, _R1 and _R2 need to be of the same length
+        """
+
+        if self.paired:
+            path_R1 = self.path + self.sample + '_R1.gastq.gz'
+            path_R2 = self.path + self.sample + '_R2.gastq.gz'
+            res_R1 = subprocess.run(['zcat', path_R1, '|', 'wc', '-l'])
+            res_R2 = subprocess.run(['zcat', path_R2, '|', 'wc', '-l'])
+            if res_R1 != res_R2:
+                raise Exception('check_sample_length:', self.sample, ' is paired but does not have the same length')
+        else:
+            path_R1 = self.path + self.sample + '.gastq.gz'
+            res = subprocess.run(['zcat', path_R1, '|', 'wc', '-l'])
+            if res % 4 != 0:
+                raise Exception('check_sample_length:', self.sample, ' is single but does not have the correct '
+                                                                     'sample length')
 
 
 class Bwa(LogMain):
@@ -731,6 +782,8 @@ class Parent(LogMain):
 
         if t1 | t2 | t3:
             error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
+            # TODO: Delete...
+            self.progressmeter_analysis(title='ApplyBQSR')
             if t1:
                 error = error + ' --> ' + list(set(chr_temp).difference(set(list(dict.fromkeys(chromosome)))))[0]
             raise Exception('check_progressmeter_chromosomes: ' + self.sample + ' has some strange chromosome values '
@@ -771,6 +824,41 @@ class Parent(LogMain):
             raise Exception('check_progressmeter_start_end: ' + self.sample + ' does not have the correct start and '
                                                                               'end statements in the ProgressMeter '
                                                                               'section. Issue in condition/s: ', error)
+
+    def progressmeter_analysis(self, title='BaseRecalibrator'):
+        """
+        Visual test to see whether the output is in line with our expectations
+        """
+        chr_count = defaultdict(int)
+        chr_time = defaultdict(float)
+        chr_reads = defaultdict(int)
+        for row in self.progressmeter[2:-1]:
+            row_split = row.split()
+            chr_count[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += 1
+            chr_time[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += float(row_split[5])
+            chr_reads[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += int(row_split[6])
+
+        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, sharex=True, figsize=(15, 15))
+
+        ax1.bar(range(len(chr_count)), list(chr_count.values()), align='center')
+        ax1.set_xticks(range(len(chr_count)))
+        ax1.set_xticklabels(list(chr_count.keys()))
+        ax1.set_ylabel('Number of Chromosomes \n Processed')
+
+        ax2.bar(range(len(chr_time)), list(chr_time.values()), align='center')
+        ax2.set_xticks(range(len(chr_count)))
+        ax2.set_xticklabels(list(chr_count.keys()))
+        ax2.set_ylabel('Time Required for \n Processing (min)')
+
+        ax3.bar(range(len(chr_reads)), list(chr_reads.values()), align='center')
+        ax3.set_xticks(range(len(chr_count)))
+        ax3.set_xticklabels(list(chr_count.keys()))
+        ax3.set_ylabel('Number of Reads \n Performed')
+        ax3.set_xlabel('Chromosomes affected')
+
+        fig.suptitle('Overview of ' + title + ' Process \n ' + self.sample, fontsize=20)
+
+        plt.show()
 
 
 class BaseRecalibrator(Parent):
@@ -847,7 +935,7 @@ class BaseRecalibrator(Parent):
 
         self.final_section = self.log_file[-11:]
 
-    def check_log(self):
+    def check_log(self, visual=True):
         """
         This method will run all the methods implemented for this class
 
@@ -871,6 +959,8 @@ class BaseRecalibrator(Parent):
         self.check_featuremanager()
         self.check_progressmeter()
         self.check_output_exists()
+        if visual:
+            self.progressmeter_analysis(title='BaseRecalibrator')
 
     def check_final_section(self):
         """
@@ -1128,7 +1218,7 @@ class ApplyBQSR(Parent):
 
         self.final_section = self.log_file[-9:]
 
-    def check_log(self):
+    def check_log(self, visual=True):
         """
         This method will run all the methods implemented for this class
 
@@ -1152,6 +1242,8 @@ class ApplyBQSR(Parent):
         self.check_featuremanager()
         self.check_progressmeter()
         self.check_output_exists()
+        if visual:
+            self.progressmeter_analysis(title='ApplyBQSR')
 
     def check_final_section(self):
         """
@@ -1323,7 +1415,7 @@ class HaploType(Parent):
                 self.warning.append(row)
                 warn_bool = False
 
-    def check_log(self, plot=True):
+    def check_log(self, warning_plot=True, visual=True):
         """
         This method will run all the methods implemented for this class
         - ``check_running()``
@@ -1339,9 +1431,12 @@ class HaploType(Parent):
         self.check_correct_sample()
         self.check_haplotype()
         self.check_featuremanager()
-        self.check_warnings(plot=plot)
+        if warning_plot:
+            self.check_warnings()
         self.check_progressmeter()
         self.check_output_exists()
+        if visual:
+            self.progressmeter_analysis(title='HaploTypeCaller')
 
     def check_featuremanager(self):
         """
@@ -1363,14 +1458,13 @@ class HaploType(Parent):
         self.check_haplotype_engine()
         self.check_haplotype_filters()
 
-    def check_warnings(self, plot=True):
+    def check_warnings(self):
         # TODO: How shall we interpret these warnings?
         """
         There are multiple warnings in the log file. We will make sure that these warnings are serious or not
 
         """
-        if plot:
-            self.warning_stats()
+        self.warning_stats()
 
     def check_progressmeter(self):
         """
