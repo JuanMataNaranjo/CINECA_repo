@@ -630,12 +630,132 @@ class Parent(LogMain):
     """
     This class will be a place holder for multiple methods used for BaseRecalibrator, ApplyBQSR and HaploType
     """
-    # TODO: Understand which errors can be turned into warnings and check versions
-    # TODO: Check the chromosomes that are being evaluated
 
     def __init__(self, path, sample):
         self.path = path
         self.sample = sample
+        self.chr_count = defaultdict(int)
+        self.chr_time = defaultdict(float)
+        self.chr_reads = defaultdict(int)
+        #TODO: Put this outside and read instead
+        self.true_apply_chr_count = {'1': 1.0, '2': 0.8, '3': 0.8, '4': 0.8, '5': 0.8, '6': 0.8, '7': 0.6000000000000001,
+                                '8': 0.4, '9': 0.6000000000000001, '10': 0.4, '11': 0.6000000000000001,
+                                '12': 0.6000000000000001, '13': 0.2, '14': 0.4, '15': 0.4, '16': 0.2, '17': 0.4,
+                                '18': 0.4, '19': 0.2, '20': 0.2, '21': 0.2, '22': 0.2, 'X': 0.2, 'Y': 0.4}
+        self.true_apply_chr_time = {'1': 0.125, '2': 0.25, '3': 0.385, '4': 0.515, '5': 0.65, '6': 0.785, '7': 0.675,
+                               '8': 0.49000000000000005, '9': 0.8, '10': 0.5750000000000001, '11': 0.925, '12': 1.0,
+                               '13': 0.35000000000000003, '14': 0.7250000000000001, '15': 0.76, '16': 0.39, '17': 0.81,
+                               '18': 0.8400000000000001, '19': 0.435, '20': 0.44000000000000006, '21': 0.45,
+                               '22': 0.45999999999999996, 'X': 0.4650000000000001, 'Y': 0.9550000000000001}
+        self.true_apply_chr_reads = {'1': 0.11632613625962351, '2': 0.24521240351073462, '3': 0.3809838599774223,
+                                '4': 0.5150772422630611, '5': 0.6435770439452033, '6': 0.7685579749204187,
+                                '7': 0.6631138954712338, '8': 0.4850041189093535, '9': 0.7918882911102749,
+                                '10': 0.5711045796169923, '11': 0.9216390208182901, '12': 1.0,
+                                '13': 0.35080903515819667, '14': 0.727846878273516, '15': 0.7625169078686425,
+                                '16': 0.3941745400551222, '17': 0.8142829538173646, '18': 0.8488207715073175,
+                                '19': 0.4373874927537706, '20': 0.4459812665900516, '21': 0.4544835091073663,
+                                '22': 0.46197890711605155, 'X': 0.46945396483163326, 'Y': 0.9574905875293663}
+
+        self.true_base_chr_count = {'1': 0.96, '2': 1.0, '3': 0.8, '4': 0.8, '5': 0.72, '6': 0.72, '7': 0.68, '8': 0.64,
+                               '9': 0.56, '10': 0.6, '11': 0.6, '12': 0.56, '13': 0.44, '14': 0.4, '15': 0.36,
+                               '16': 0.36, '17': 0.36, '18': 0.32, '19': 0.28, '20': 0.28, '21': 0.16, '22': 0.16,
+                               'X': 0.4, 'Y': 0.08}
+        self.true_base_chr_time = {'1': 0.10115722266560254, '2': 0.30925778132482046, '3': 0.3978451715881883,
+                              '4': 0.5313248204309656, '5': 0.5919792498004787, '6': 0.6997206703910613,
+                              '7': 0.7609736632083002, '8': 0.8038707102952913, '9': 0.773343974461293,
+                              '10': 0.9014365522745412, '11': 0.9766560255387073, '12': 0.979050279329609,
+                              '13': 0.8150438946528332, '14': 0.7757382282521949, '15': 0.7272545889864326,
+                              '16': 0.7541899441340781, '17': 0.7811252992817238, '18': 0.716879489225858,
+                              '19': 0.644852354349561, '20': 0.6614126097366321, '21': 0.3852753391859537,
+                              '22': 0.39066241021548287, 'X': 1.0, 'Y': 0.20371109337589782}
+        self.true_base_chr_reads = {'1': 0.09953048645616466, '2': 0.31896821035301304, '3': 0.41314227468936626,
+                               '4': 0.554865131721466, '5': 0.6201158847901782, '6': 0.7334718234866225,
+                               '7': 0.7933752756311296, '8': 0.8296525508563661, '9': 0.7921097097407528,
+                               '10': 0.9187119047564754, '11': 0.9917019922971503, '12': 0.9917225149872645,
+                               '13': 0.8250714303630919, '14': 0.7847261018974366, '15': 0.7342790492977819,
+                               '16': 0.7603474263406447, '17': 0.786744166425335, '18': 0.7222299499018331,
+                               '19': 0.648519287908259, '20': 0.6643673652742401, '21': 0.38703285226627504,
+                               '22': 0.39215440359922377, 'X': 0.9999999999999999, 'Y': 0.20331589892803148}
+
+        self.true_haplo_chr_count = {'1': 0.9509803921568627, '2': 1.0, '3': 0.8529411764705882, '4': 0.8333333333333334,
+                                '5': 0.7549019607843137, '6': 0.7549019607843137, '7': 0.6568627450980392,
+                                '8': 0.5882352941176471, '9': 0.5098039215686274, '10': 0.5980392156862745,
+                                '11': 0.5686274509803921, '12': 0.5588235294117647, '13': 0.4411764705882353,
+                                '14': 0.37254901960784315, '15': 0.3431372549019608, '16': 0.39215686274509803,
+                                '17': 0.3529411764705882, '18': 0.3333333333333333, '19': 0.22549019607843138,
+                                '20': 0.3333333333333333, '21': 0.22549019607843138, '22': 0.18627450980392157,
+                                'X': 0.3333333333333333, 'Y': 0.08823529411764705}
+        self.true_haplo_chr_time = {'1': 0.09779541337539592, '2': 0.31184611024165443, '3': 0.4358648905100495,
+                               '4': 0.5770496247643231, '5': 0.6511602114628654, '6': 0.773256602053014,
+                               '7': 0.7719750089341832, '8': 0.7695720218363755, '9': 0.7268974355814614,
+                               '10': 0.9235973333004719, '11': 0.949044350515718, '12': 1.0, '13': 0.8371514128331843,
+                               '14': 0.7393313534362722, '15': 0.7071929413794384, '16': 0.8402568115441971,
+                               '17': 0.7854317366819069, '18': 0.7662448089317189, '19': 0.5318118522717474,
+                               '20': 0.8061960098091168, '21': 0.5589964140038698, '22': 0.4699873072989195,
+                               'X': 0.8595423233804487, 'Y': 0.23152472612108604}
+        self.true_haplo_chr_reads = {'1': 0.10026755156243426, '2': 0.3170263732140641, '3': 0.43986302238764197,
+                                '4': 0.5779748238479174, '5': 0.6493011479754309, '6': 0.7680823428086322,
+                                '7': 0.7687299296240473, '8': 0.7679727665566674, '9': 0.7274631021751309,
+                                '10': 0.9229204425520959, '11': 0.948005031443449, '12': 1.0, '13': 0.8364298290370424,
+                                '14': 0.7386816863074641, '15': 0.707876279923501, '16': 0.8379892646383053,
+                                '17': 0.7806048958615608, '18': 0.7624005472129715, '19': 0.5296087956892019,
+                                '20': 0.8008151274835964, '21': 0.5515464567877524, '22': 0.4621923427323935,
+                                'X': 0.853342230274628, 'Y': 0.23219735892811305}
+
+    @staticmethod
+    def entropy(dict_):
+        """
+        Entropy of the dictionary output
+        :param dict_: Dict over which we will perform the evaluation
+        :return: Value of entropy
+        """
+        vals = list(dict_.values())
+        res = 0
+        for val in vals:
+            res += val * np.log(val)
+
+        return 5 if 1 / abs(res) == np.inf else 1 / abs(res)
+
+    @staticmethod
+    def distance(dict_, correct_dist_dict_):
+        """
+        KL Divergence between a dictionary and a dict which we consider to be "correct"
+        :param dict_: Dict over which we will do the evaluation
+        :param correct_dist_dict_: Supposidly correct dictionary
+        :return: Value with the distance
+        """
+        for keys, values in correct_dist_dict_.items():
+            if keys in dict_.keys():
+                continue
+            else:
+                dict_[keys] = 0
+
+        p = list(dict_.values())
+        q = list(correct_dist_dict_.values())
+
+        return abs(np.nansum([p[i] * np.log2(p[i] / q[i]) for i in range(len(p))]))
+
+    @staticmethod
+    def std(dict_):
+        """
+        Estimate variance of the dictionary
+        :param dict_: Dict over which estimate will be performed
+        :return: Std Value
+        """
+        std = np.std(np.array(list(dict_.values())))
+        return std
+
+    @staticmethod
+    def normalize(dict_, target=1.0):
+        """
+        Method to normalize a dictionary based on its maximum value
+
+        :param dict_: Dictionary to normzalie
+        :return: Normalized dict
+        """
+        raw = max(dict_.values())
+        factor = target / raw
+        return {key: value * factor for key, value in dict_.items()}
 
     def single_paired(self, table_path='data/fastq.csv'):
         """
@@ -754,7 +874,6 @@ class Parent(LogMain):
                                                                                  'flags')
 
     def check_progressmeter_chromosomes(self):
-        # TODO: For sure we can implement better tests in this method
         """
         Check all chromosomes are present in the progressmeter section
         - We also take the chance to check all chromsome ids are positive integers
@@ -782,7 +901,6 @@ class Parent(LogMain):
 
         if t1 | t2 | t3:
             error = ','.join(filter(None, [t1 * 't1', t2 * 't2', t3 * 't3']))
-            # TODO: Delete...
             self.progressmeter_analysis(title='ApplyBQSR')
             if t1:
                 error = error + ' --> ' + list(set(chr_temp).difference(set(list(dict.fromkeys(chromosome)))))[0]
@@ -829,44 +947,62 @@ class Parent(LogMain):
         """
         Visual test to see whether the output is in line with our expectations
         """
-        chr_count = defaultdict(int)
-        chr_time = defaultdict(float)
-        chr_reads = defaultdict(int)
+
         for row in self.progressmeter[2:-1]:
             row_split = row.split()
-            chr_count[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += 1
-            chr_time[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += float(row_split[5])
-            chr_reads[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += int(row_split[6])
+            self.chr_count[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += 1
+            self.chr_time[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += float(row_split[5])
+            self.chr_reads[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += int(row_split[6])
 
-        fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, sharex=True, figsize=(15, 15))
+        if title:
 
-        ax1.bar(range(len(chr_count)), list(chr_count.values()), align='center')
-        ax1.set_xticks(range(len(chr_count)))
-        ax1.set_xticklabels(list(chr_count.keys()))
-        ax1.set_ylabel('Number of Chromosomes \n Processed')
+            fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, sharex=True, figsize=(15, 15))
 
-        ax2.bar(range(len(chr_time)), list(chr_time.values()), align='center')
-        ax2.set_xticks(range(len(chr_count)))
-        ax2.set_xticklabels(list(chr_count.keys()))
-        ax2.set_ylabel('Time Required for \n Processing (min)')
+            ax1.bar(range(len(self.chr_count)), list(self.chr_count.values()), align='center')
+            ax1.set_xticks(range(len(self.chr_count)))
+            ax1.set_xticklabels(list(self.chr_count.keys()))
+            ax1.set_ylabel('Number of Chromosomes \n Processed')
 
-        ax3.bar(range(len(chr_reads)), list(chr_reads.values()), align='center')
-        ax3.set_xticks(range(len(chr_count)))
-        ax3.set_xticklabels(list(chr_count.keys()))
-        ax3.set_ylabel('Number of Reads \n Performed')
-        ax3.set_xlabel('Chromosomes affected')
+            ax2.bar(range(len(self.chr_time)), list(self.chr_time.values()), align='center')
+            ax2.set_xticks(range(len(self.chr_count)))
+            ax2.set_xticklabels(list(self.chr_count.keys()))
+            ax2.set_ylabel('Time Required for \n Processing (min)')
 
-        fig.suptitle('Overview of ' + title + ' Process \n ' + self.sample, fontsize=20)
+            ax3.bar(range(len(self.chr_reads)), list(self.chr_reads.values()), align='center')
+            ax3.set_xticks(range(len(self.chr_count)))
+            ax3.set_xticklabels(list(self.chr_count.keys()))
+            ax3.set_ylabel('Number of Reads \n Performed')
+            ax3.set_xlabel('Chromosomes affected')
 
-        plt.show()
+            fig.suptitle('Overview of ' + title + ' Process \n ' + self.sample, fontsize=20)
 
+            plt.show()
+
+    def compute_score(self, true_dict):
+        """
+        In order to estimate which samples are more likely to be corrupt we will first compute a score which will
+        later be used to perform a filter
+        :return: Score value
+        """
+
+        score = 0
+
+        score += self.entropy(self.normalize(self.chr_count))
+        score += self.entropy(self.normalize(self.chr_time))
+        score += self.entropy(self.normalize(self.chr_reads))
+        score += self.std(self.normalize(self.chr_count))
+        score += self.std(self.normalize(self.chr_time))
+        score += self.std(self.normalize(self.chr_reads))
+        score += self.distance(self.normalize(self.chr_count), true_dict[0])
+        score += self.distance(self.normalize(self.chr_time), true_dict[1])
+        score += self.distance(self.normalize(self.chr_reads), true_dict[2])
+
+        return score
 
 class BaseRecalibrator(Parent):
     """
     This class will check the baserecalibrator log
     """
-    # TODO: Understand which errors can be turned into warnings and check versions
-    # TODO: Check the chromosomes that are being evaluated
 
     def __init__(self, path, sample):
         super().__init__(path, sample)
@@ -935,7 +1071,7 @@ class BaseRecalibrator(Parent):
 
         self.final_section = self.log_file[-11:]
 
-    def check_log(self, visual=True):
+    def check_log(self, title='BaseRecalibrator', score=True):
         """
         This method will run all the methods implemented for this class
 
@@ -959,8 +1095,9 @@ class BaseRecalibrator(Parent):
         self.check_featuremanager()
         self.check_progressmeter()
         self.check_output_exists()
-        if visual:
-            self.progressmeter_analysis(title='BaseRecalibrator')
+        self.progressmeter_analysis(title=title)
+        if score:
+            return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 
     def check_final_section(self):
         """
@@ -1218,7 +1355,7 @@ class ApplyBQSR(Parent):
 
         self.final_section = self.log_file[-9:]
 
-    def check_log(self, visual=True):
+    def check_log(self, title='ApplyBQSR', score=True):
         """
         This method will run all the methods implemented for this class
 
@@ -1242,8 +1379,9 @@ class ApplyBQSR(Parent):
         self.check_featuremanager()
         self.check_progressmeter()
         self.check_output_exists()
-        if visual:
-            self.progressmeter_analysis(title='ApplyBQSR')
+        self.progressmeter_analysis(title=title)
+        if score:
+            return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 
     def check_final_section(self):
         """
@@ -1291,7 +1429,7 @@ class ApplyBQSR(Parent):
         - ``check_progressmeter_start_end``
         """
 
-        self.check_progressmeter_chromosomes()
+        #self.check_progressmeter_chromosomes()
         self.check_progressmeter_start_end()
 
     def check_final_section_others(self):
@@ -1415,7 +1553,7 @@ class HaploType(Parent):
                 self.warning.append(row)
                 warn_bool = False
 
-    def check_log(self, warning_plot=True, visual=True):
+    def check_log(self, warning_plot=True, title='HaploTypeCaller', score=True):
         """
         This method will run all the methods implemented for this class
         - ``check_running()``
@@ -1435,8 +1573,9 @@ class HaploType(Parent):
             self.check_warnings()
         self.check_progressmeter()
         self.check_output_exists()
-        if visual:
-            self.progressmeter_analysis(title='HaploTypeCaller')
+        self.progressmeter_analysis(title=title)
+        if score:
+            return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 
     def check_featuremanager(self):
         """
@@ -1584,3 +1723,13 @@ class HaploType(Parent):
         if len(re.findall(s_check, s)) != 1:
             raise Exception('check_featuremanager_files: ' + self.sample + ' did not get the features from the correct '
                                                                            'input files')
+
+
+def df_func(list_, header=['Sample', 'Sample_Score']):
+    """
+    Aux function to filter and return output
+    """
+
+    df = pd.DataFrame(list_, columns=header)
+    df = df.sort_values(by=[header[1]]).reset_index(drop=True)
+    return df
