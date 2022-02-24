@@ -39,10 +39,10 @@ class Overall:
     python
     """
 
-    def __init__(self, sample, path):
+    def __init__(self, sample, path, table_path='data/fastq.csv'):
         self.sample = sample
         self.path = path
-        self.paired = self.single_paired()
+        self.paired = self.single_paired(table_path)
 
     def single_paired(self, table_path='data/fastq.csv'):
         """
@@ -86,12 +86,12 @@ class Bwa(LogMain):
     This class will check the bwa log
     """
 
-    def __init__(self, path, sample):
+    def __init__(self, path, sample, table_path='data/fastq.csv'):
         self.log_file = None
         self.path = path
         self.sample = sample
         self.dict_ = None
-        self.paired = self.single_paired()
+        self.paired = self.single_paired(table_path)
         self.read_log()
         self.process = []
         self.mem_pestat = []
@@ -154,15 +154,6 @@ class Bwa(LogMain):
         self.check_mem_pestat()
         self.check_start_statement()
         self.check_correct_sample()
-        self.check_output_exists()
-
-    def check_output_exists(self, file='data/OUTPUT/something.sam'):
-        """
-        Method to check that the output has been generated correctly
-        """
-        file_exist = not os.path.exists(file)
-        if file_exist:
-            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def _batch(self, iterable, n=1):
         l = len(iterable)
@@ -372,15 +363,6 @@ class Fastqc(LogMain):
         """
         self.check_lines()
         self.check_start_end()
-        self.check_output_exists()
-
-    def check_output_exists(self, file='data/OUTPUT/something.sam'):
-        """
-        Method to check that the output has been generated correctly
-        """
-        file_exist = not os.path.exists(file)
-        if file_exist:
-            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_lines(self):
         """
@@ -417,11 +399,11 @@ class SamSort(LogMain):
     This class will check the samsort log
     """
 
-    def __init__(self, path, sample):
+    def __init__(self, path, sample, table_path='data/fastq.csv'):
         self.log_file = None
         self.path = path
         self.sample = sample
-        self.paired = self.single_paired()
+        self.paired = self.single_paired(table_path)
         self.read_log()
         self.dups = None
 
@@ -472,15 +454,6 @@ class SamSort(LogMain):
         self.check_rows()
         self.check_table_sums()
         self.check_removals()
-        self.check_output_exists()
-
-    def check_output_exists(self, file='data/OUTPUT/something.sam'):
-        """
-        Method to check that the output has been generated correctly
-        """
-        file_exist = not os.path.exists(file)
-        if file_exist:
-            raise Exception('check_output_exists: ' + self.sample + ' did not generate the output file')
 
     def check_lines(self):
         """
@@ -1094,7 +1067,6 @@ class BaseRecalibrator(Parent):
         self.check_baserecalibrator()
         self.check_featuremanager()
         self.check_progressmeter()
-        self.check_output_exists()
         self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
@@ -1378,7 +1350,6 @@ class ApplyBQSR(Parent):
         self.check_applybqsr()
         self.check_featuremanager()
         self.check_progressmeter()
-        self.check_output_exists()
         self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
@@ -1572,7 +1543,6 @@ class HaploType(Parent):
         if warning_plot:
             self.check_warnings()
         self.check_progressmeter()
-        self.check_output_exists()
         self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
