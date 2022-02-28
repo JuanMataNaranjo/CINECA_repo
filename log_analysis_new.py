@@ -977,15 +977,16 @@ class BaseRecalibrator(Parent):
     This class will check the baserecalibrator log
     """
 
-    def __init__(self, path, sample):
+    def __init__(self, path, sample, table_path='data/fastq.csv', 
+                 input_parameter_path='data/template_recaldat.log'):
         super().__init__(path, sample)
         self.log_file = None
         self.log_template = None
         self.path = path
         self.sample = sample
-        self.paired = self.single_paired()
+        self.paired = self.single_paired(table_path)
         self.read_log(end_part='_sort_nodup.recaldat.log')
-        self._read_template()
+        self._read_template(path=input_parameter_path)
         self.global_flags = []
         self.baserecalibrator = []  # Contains info on BaseRecalibrationEngine and BaseRecalibrator
         self.featuremanager = []
@@ -1263,14 +1264,14 @@ class ApplyBQSR(Parent):
     """
     # TODO: Check the chromosomes that are being evaluated
 
-    def __init__(self, path, sample):
+    def __init__(self, path, sample, input_parameter_path='data/template_recaldat.log'):
         super().__init__(path, sample)
         self.path = path
         self.sample = sample
         self.log_file = None
         self.log_template = None
         self.read_log(end_part='_sort_nodup.bqsr.log')
-        self._read_template()
+        self._read_template(path=input_parameter_path)
         self.global_flags = []
         self.applybqsr = []  # Contains info on BaseRecalibrationEngine and BaseRecalibrator
         self.featuremanager = []
@@ -1466,12 +1467,12 @@ class HaploType(Parent):
     This class will check the Haplotype log
     """
 
-    def __init__(self, path, sample):
+    def __init__(self, path, sample, table_path='data/fastq.csv'):
         super().__init__(path, sample)
         self.log_file = None
         self.path = path
         self.sample = sample
-        self.paired = self.single_paired()
+        self.paired = self.single_paired(table_path)
         self.read_log(end_part='_sort_nodup.g.vcf.log')
         self.haplotype = []
         self.featuremanager = []
