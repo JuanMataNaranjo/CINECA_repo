@@ -7,7 +7,7 @@ class BaseRecalibrator(Parent):
     """
 
     def __init__(self, path, sample, table_path='data/fastq.csv', 
-                 input_parameter_path='data/template_recaldat.log'):
+                 input_parameter_path='template_recaldat.log'):
         super().__init__(path, sample)
         self.log_file = None
         self.log_template = None

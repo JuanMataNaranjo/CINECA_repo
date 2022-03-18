@@ -225,14 +225,18 @@ class Parent(LogMain):
 
         return bool_
 
-    def read_log(self, end_part):
+    def read_log(self, end_part, haplo_prefix=None):
         """
         Method to store the log file as part of the class variables
         """
-        with open(self.path + self.sample + end_part) as f:
-            self.log_file = f.readlines()
+        if haplo_prefix:
+            with open(self.path + haplo_prefix + self.sample + end_part) as f:
+                self.log_file = f.readlines()
+        else:
+            with open(self.path + self.sample + end_part) as f:
+                self.log_file = f.readlines()
 
-    def _read_template(self, path='data/template_recaldat.log'):
+    def _read_template(self, path='template_recaldat.log'):
         """
         We read the global flag template so that we can compare this part more easily
         """
@@ -311,7 +315,7 @@ class Parent(LogMain):
         Method to check that all the global flags are set as expected
 
         - We compare the global flags with that of the template (check template_recaldat.log file for more details)
-        - There are only 5 rows which are not supposed to be equal (they changed based on the computer session used)
+        - There are only 5 rows which are not supposed to be equal (they change based on the computer session used)
             - ``uintx InitialHeapSize``
             - ``uintx MaxHeapSize``
             - ``uintx MaxNewSize``

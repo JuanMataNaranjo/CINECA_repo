@@ -14,7 +14,7 @@ class HaploType(Parent):
         self.path = path
         self.sample = sample
         self.paired = self.single_paired(table_path)
-        self.read_log(end_part='_sort_nodup.g.vcf.log')
+        self.read_log(end_part='_sort_nodup.g.vcf.log', haplo_prefix='tmp_')
         self.haplotype = []
         self.featuremanager = []
         self.progressmeter = []

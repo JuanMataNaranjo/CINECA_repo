@@ -7,7 +7,7 @@ class ApplyBQSR(Parent):
     """
     # TODO: Check the chromosomes that are being evaluated
 
-    def __init__(self, path, sample, input_parameter_path='data/template_recaldat.log'):
+    def __init__(self, path, sample, input_parameter_path='template_recaldat.log'):
         super().__init__(path, sample)
         self.path = path
         self.sample = sample
