@@ -14,7 +14,7 @@ class HaploType(Parent):
         self.path = path
         self.sample = sample
         self.paired = self.single_paired(table_path)
-        self.read_log(end_part='_sort_nodup.g.vcf.log', haplo_prefix='tmp_')
+        self.read_log(end_part='_sort_nodup.g.vcf.log')
         self.haplotype = []
         self.featuremanager = []
         self.progressmeter = []
@@ -78,6 +78,7 @@ class HaploType(Parent):
         - ``check_output_exists()``
         """
 
+        self.check_len()
         self.check_running()
         self.check_correct_sample()
         self.check_haplotype()
@@ -88,6 +89,15 @@ class HaploType(Parent):
         self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
+
+    def check_len(self):
+        """
+        Checks if the log file has the number of expected lines
+        """
+        rows = len(self.haplotype)
+        if rows < 32:
+            raise Exception('check_len: ' + self.sample + ' does not have the expected log file length')
+
 
     def check_featuremanager(self):
         """
