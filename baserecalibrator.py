@@ -135,6 +135,7 @@ class BaseRecalibrator(Parent):
         - ``check_baserecalibrator_quantization``
         """
 
+        self.check_baserecalibrator_len()
         self.check_baserecalibrator_engine()
         self.check_baserecalibrator_covariates()
         self.check_baserecalibrator_filters()
@@ -203,6 +204,23 @@ class BaseRecalibrator(Parent):
             raise Exception('check_featuremanager_files: ' + self.sample + ' did not get the features from the correct '
                                                                            'input files')
 
+    
+    def check_baserecalibrator_len(self):
+        """
+        Method to check that the base recalibrator engine starts and ends correctly. We make sure that the following
+        are present:
+
+        - ``Initializing engine``
+        - ``Done initializing engine``
+        - ``Shutting down engine``
+        """
+
+        l = len(self.baserecalibrator)
+
+        if l < 21:
+            raise Exception('check_baserecalibrator_len: ' + self.sample + ' baserecalibrator engine is not as long as expected')
+    
+    
     def check_baserecalibrator_engine(self):
         """
         Method to check that the base recalibrator engine starts and ends correctly. We make sure that the following

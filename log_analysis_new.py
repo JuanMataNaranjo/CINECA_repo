@@ -316,6 +316,7 @@ class Parent(LogMain):
 
         - We compare the global flags with that of the template (check template_recaldat.log file for more details)
         - There are only 5 rows which are not supposed to be equal (they change based on the computer session used)
+            - ``uintx CICompilerCount``
             - ``uintx InitialHeapSize``
             - ``uintx MaxHeapSize``
             - ``uintx MaxNewSize``
@@ -327,7 +328,7 @@ class Parent(LogMain):
             original = self.global_flags[row]
             template = self.log_template[row]
 
-            if (original != template) & (row not in [257, 304, 316, 349, 360]):
+            if (original != template) & (row not in [55, 257, 304, 316, 349, 360]):
                 raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
                                                                                  'flags')
 
