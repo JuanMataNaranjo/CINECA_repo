@@ -1,6 +1,6 @@
 from pytest import fixture
-from fastqc import Fastqc
-from qc.bwa import Bwa
+from ..fastqc import Fastqc
+from ..qc.bwa import Bwa
 
 
 @fixture
