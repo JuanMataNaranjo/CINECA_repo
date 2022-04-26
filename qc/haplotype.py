@@ -1,4 +1,4 @@
-from log_analysis_new import Parent
+from .log_analysis_new import Parent
 import re
 import matplotlib.pyplot as plt
 from collections import defaultdict
