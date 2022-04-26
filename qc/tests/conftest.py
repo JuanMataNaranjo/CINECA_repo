@@ -1,6 +1,6 @@
 from pytest import fixture
-from fastqc import Fastqc
-from bwa import Bwa
+from ..fastqc import Fastqc
+from ..qc.bwa import Bwa
 
 
 @fixture
@@ -11,4 +11,3 @@ def read_bwa():
 @fixture
 def read_fastqc():
     return Fastqc('data/fastqc/', sample='SRR062634')
-

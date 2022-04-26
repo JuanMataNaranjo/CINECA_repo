@@ -1,4 +1,4 @@
-from log_analysis_new import LogMain
+from .log_analysis_new import LogMain
 
 
 class Fastqc(LogMain):

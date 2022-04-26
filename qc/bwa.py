@@ -1,4 +1,4 @@
-from log_analysis_new import LogMain
+from .log_analysis_new import LogMain
 import pandas as pd
 import re
 
