@@ -34,7 +34,7 @@ class SamSort(LogMain):
         """
         Method to store the log file as part of the class variables
         """
-        with open(self.path + self.sample + '_sort_nodup.sam.log') as f:
+        with open(self.path + self.sample + '_samblaster.log') as f:
             self.log_file = f.readlines()
 
     def check_log(self):
@@ -68,14 +68,14 @@ class SamSort(LogMain):
         """
         Check the number of lines of the log:
 
-        - In case of paired samples (R1 + R2) the log should contain 15 lines
-        - In case of single samples (R1) the log should contain 14 lines
+        - In case of paired samples (R1 + R2) the log should contain 14 lines
+        - In case of single samples (R1) the log should contain 13 lines
         """
         if self.paired:
-            if len(self.log_file) != 15:
+            if len(self.log_file) != 14:
                 raise Exception('check_lines: ' + self.sample + ' which is paired has the wrong number of log lines')
         else:
-            if len(self.log_file) != 14:
+            if len(self.log_file) != 13:
                 raise Exception('check_lines: ' + self.sample + ' which is single has the wrong number of log lines')
 
     def check_start_statement(self):
