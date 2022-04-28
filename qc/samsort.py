@@ -36,6 +36,8 @@ class SamSort(LogMain):
         """
         with open(self.path + self.sample + '_samblaster.log') as f:
             self.log_file = f.readlines()
+        with open(self.path + self.sample + '_sort_nodup.sam.log') as f:
+            self.log_file_2 = f.readlines()
 
     def check_log(self):
         """
@@ -95,7 +97,7 @@ class SamSort(LogMain):
         - ``[bam_sort_core] merging from files and in-memory blocks...``
         - We remove the numbers from the string we check since they are variable
         """
-        if re.sub(" \d+", "", self.log_file[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
+        if re.sub(" \d+", "", self.log_file_2[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
             raise Exception('check_finish_statement: ' + self.sample + ' does not have the final statement we expected')
 
     def check_correct_sample(self):
@@ -159,7 +161,7 @@ class SamSort(LogMain):
         """
         # Extract Data
         list_ = []
-        for i in self.log_file[8:-3]:
+        for i in self.log_file[8:-2]:
             x = [j for j in i[12:-1].split() if not self._check_digit(j)]
             list_.append(' '.join(x))
 
@@ -179,7 +181,7 @@ class SamSort(LogMain):
         """
         # Extract data from table
         list_ = []
-        for i in self.log_file[8:-3]:
+        for i in self.log_file[8:-2]:
             x = [float(j) for j in i[12:-1].split() if self._check_digit(j)]
             list_.append(x)
 
@@ -195,7 +197,7 @@ class SamSort(LogMain):
         Check that the number of removed duplicates matches the number in the table and that the text of the second last
         line of the log are as expected
         """
-        nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.log_file[-2])))
+        nums = list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", self.log_file[-1])))
         text = re.sub(r"\d+", "", self.log_file[-2])[:-1]
 
         t1 = int(nums[0]) != self.dups
