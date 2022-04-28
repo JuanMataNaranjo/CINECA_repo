@@ -59,7 +59,7 @@ class SamSort(LogMain):
         self.check_start_statement()
         self.check_finish_statement()
         self.check_correct_sample()
-        self.check_third_line()
+        #self.check_third_line()
         self.check_unmated()
         self.check_header()
         self.check_rows()
