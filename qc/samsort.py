@@ -97,7 +97,7 @@ class SamSort(LogMain):
         - ``[bam_sort_core] merging from files and in-memory blocks...``
         - We remove the numbers from the string we check since they are variable
         """
-        if re.sub(" \d+", "", self.log_file_2[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
+        if re.sub(r" \d+", "", self.log_file_2[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
             raise Exception('check_finish_statement: ' + self.sample + ' does not have the final statement we expected')
 
     def check_correct_sample(self):

@@ -190,7 +190,7 @@ class Bwa(LogMain):
         """
         Make sure that the file that is being processed is the actual sample
 
-        - ``[main] CMD: bwa mem -p -t 8 -R @RG\tID:HSRR062625\tLB:HSRR062625\tSM:HSRR062625\tPU:unknown\ ...``
+        - ``[main] CMD: bwa mem -p -t 8 -R @RG\tID:HSRR062625\tLB:HSRR062625\tSM:HSRR062625\tPU:unknown ...``
         - If we are processing sample HSRR062625 we should only have this value in this string
         """
         if len(re.findall(self.sample, self.log_file[-2])) == 0:
