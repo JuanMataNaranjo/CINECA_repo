@@ -74,7 +74,7 @@ class SamSort(LogMain):
         - In case of single samples (R1) the log should contain 13 lines
         """
         if self.paired:
-            if (len(self.log_file) != 14) | (len(self.log_file) != 15):
+            if (len(self.log_file) != 14) & (len(self.log_file) != 15):
                 raise Exception('check_lines: ' + self.sample + ' which is paired has the wrong number of log lines')
         else:
             if len(self.log_file) != 13:

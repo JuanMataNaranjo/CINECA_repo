@@ -47,11 +47,11 @@ class Fastqc(LogMain):
         - We expect 21 lines in the log
         """
         if self.log_file_1:
-            if (len(self.log_file_1) != 21) | (len(self.log_file_1) != 22):
+            if (len(self.log_file_1) != 21) & (len(self.log_file_1) != 22):
                 raise Exception('check_lines: ' + self.sample + '_R1 does not have the correct number of lines')
 
         if self.log_file_2:
-            if (len(self.log_file_2) != 21) | (len(self.log_file_2) != 22):
+            if (len(self.log_file_2) != 21) & (len(self.log_file_2) != 22):
                 raise Exception('check_lines: ' + self.sample + '_R2 does not have the correct number of lines')
 
     def check_start_end(self):
