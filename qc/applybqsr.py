@@ -71,7 +71,9 @@ class ApplyBQSR(Parent):
 
         self.final_section = self.log_file[-9:]
 
-    def check_log(self, title='ApplyBQSR', score=True):
+    def check_log(self, title='ApplyBQSR', score=True, check_running=True, check_correct_sample=True, check_global_flags_start=True,
+                  check_final_section=True, check_global_flags=True, check_applybqsr=True, check_featuremanager=True, check_progressmeter=True,
+                  progressmeter_analysis=True):
         """
         This method will run all the methods implemented for this class
 
@@ -86,15 +88,24 @@ class ApplyBQSR(Parent):
         - ``check_output_exists()``
         """
 
-        self.check_running()
-        self.check_correct_sample()
-        self.check_global_flags_start()
-        self.check_final_section()
-        self.check_global_flags()
-        self.check_applybqsr()
-        self.check_featuremanager()
-        self.check_progressmeter()
-        self.progressmeter_analysis(title=title)
+        if check_running:
+            self.check_running()
+        if check_correct_sample:
+            self.check_correct_sample()
+        if check_global_flags_start:
+            self.check_global_flags_start()
+        if check_final_section:
+            self.check_final_section()
+        if check_global_flags:
+            self.check_global_flags()
+        if check_applybqsr:
+            self.check_applybqsr()
+        if check_featuremanager:
+            self.check_featuremanager()
+        if check_progressmeter:
+            self.check_progressmeter()
+        if progressmeter_analysis:
+            self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 

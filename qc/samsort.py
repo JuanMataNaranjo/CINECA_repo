@@ -39,7 +39,8 @@ class SamSort(LogMain):
         with open(self.path + self.sample + '_sort_nodup.sam.log') as f:
             self.log_file_2 = f.readlines()
 
-    def check_log(self):
+    def check_log(self, check_lines=True, check_start_statement=True, check_finish_statement=True, check_correct_sample=True,
+                  check_unmated=True, check_header=True, check_rows=True, check_table_sums=True, check_removals=True):
         """
         This method will run all the methods implemented for this class
 
@@ -55,16 +56,25 @@ class SamSort(LogMain):
         - ``check_removals()``
         - ``check_output_exists()``
         """
-        self.check_lines()
-        self.check_start_statement()
-        self.check_finish_statement()
-        self.check_correct_sample()
+        if check_lines:
+            self.check_lines()
+        if check_start_statement:
+            self.check_start_statement()
+        if check_finish_statement:
+            self.check_finish_statement()
+        if check_correct_sample:
+            self.check_correct_sample()
         #self.check_third_line()
-        self.check_unmated()
-        self.check_header()
-        self.check_rows()
-        self.check_table_sums()
-        self.check_removals()
+        if check_unmated:
+            self.check_unmated()
+        if check_header:
+            self.check_header()
+        if check_rows:
+            self.check_rows()
+        if check_table_sums:
+            self.check_table_sums()
+        if check_removals:
+            self.check_removals()
 
     def check_lines(self):
         """
@@ -97,7 +107,7 @@ class SamSort(LogMain):
         - ``[bam_sort_core] merging from files and in-memory blocks...``
         - We remove the numbers from the string we check since they are variable
         """
-        if re.sub(" \d+", "", self.log_file_2[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
+        if re.sub(r" \d+", "", self.log_file_2[-1][:-1]) != '[bam_sort_core] merging from files and in-memory blocks...':
             raise Exception('check_finish_statement: ' + self.sample + ' does not have the final statement we expected')
 
     def check_correct_sample(self):

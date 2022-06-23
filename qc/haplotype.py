@@ -66,7 +66,8 @@ class HaploType(Parent):
                 self.warning.append(row)
                 warn_bool = False
 
-    def check_log(self, warning_plot=True, title='HaploTypeCaller', score=True):
+    def check_log(self, warning_plot=True, title='HaploTypeCaller', score=True, check_len=True, check_running=True, check_correct_sample=True,
+                  check_haplotype=True, check_featuremanager=True, check_progressmeter=True, progressmeter_analysis=True):
         """
         This method will run all the methods implemented for this class
         - ``check_running()``
@@ -78,15 +79,22 @@ class HaploType(Parent):
         - ``check_output_exists()``
         """
 
-        self.check_len()
-        self.check_running()
-        self.check_correct_sample()
-        self.check_haplotype()
-        self.check_featuremanager()
+        if check_len:
+            self.check_len()
+        if check_running:
+            self.check_running()
+        if check_correct_sample:
+            self.check_correct_sample()
+        if check_haplotype:
+            self.check_haplotype()
+        if check_featuremanager:
+            self.check_featuremanager()
         if warning_plot:
             self.check_warnings()
-        self.check_progressmeter()
-        self.progressmeter_analysis(title=title)
+        if check_progressmeter:
+            self.check_progressmeter()
+        if progressmeter_analysis:
+            self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 

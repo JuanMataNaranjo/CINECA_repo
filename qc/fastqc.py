@@ -29,7 +29,7 @@ class Fastqc(LogMain):
         except:
             self.log_file_2 = False
 
-    def check_log(self):
+    def check_log(self, check_lines=True, check_start_end=True):
         """
         This method will run all the methods implemented for this class
 
@@ -37,8 +37,10 @@ class Fastqc(LogMain):
         - ``check_start_end()``
         - ``check_output_exists()``
         """
-        self.check_lines()
-        self.check_start_end()
+        if check_lines:
+            self.check_lines()
+        if check_start_end:
+            self.check_start_end()
 
     def check_lines(self):
         """

@@ -58,7 +58,8 @@ class Bwa(LogMain):
             elif row[:21] == '[M::mem_process_seqs]':
                 self.mem_process_seqs.append(row)
 
-    def check_log(self):
+    def check_log(self, check_process=True, check_mem_process_seqs=True, check_mem_pestat=True, check_start_statement=True, 
+                  check_correct_sample=True):
         """
         This method will run all the methods implemented for this class
 
@@ -70,11 +71,17 @@ class Bwa(LogMain):
         - ``check_enough_pairs(threshold=100)``
         - ``check_output_exists()``
         """
-        self.check_process()
-        self.check_mem_process_seqs()
-        self.check_mem_pestat()
-        self.check_start_statement()
-        self.check_correct_sample()
+
+        if check_process:
+            self.check_process()
+        if check_mem_process_seqs:
+            self.check_mem_process_seqs()
+        if check_mem_pestat:
+            self.check_mem_pestat()
+        if check_start_statement:
+            self.check_start_statement()
+        if check_correct_sample:
+            self.check_correct_sample()
 
     def _batch(self, iterable, n=1):
         l = len(iterable)
