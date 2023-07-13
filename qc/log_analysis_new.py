@@ -332,6 +332,7 @@ class Parent(LogMain):
                 raise Exception('check_global_flags_variables: ' + self.sample + ' does not have the right global '
                                                                                  'flags')
 
+    # Removed CHRY
     def check_progressmeter_chromosomes(self):
         """
         Check all chromosomes are present in the progressmeter section
@@ -345,7 +346,7 @@ class Parent(LogMain):
 
         chr_temp = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
                     'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22',
-                    'chrX', 'chrY']
+                    'chrX']
 
         for row in self.progressmeter[2:-1]:
             _, _, _, _, chrom, _, region, _ = row.split()

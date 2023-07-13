@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 /data
+/nig_env
 .idea/
