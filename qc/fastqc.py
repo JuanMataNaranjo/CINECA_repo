@@ -1,6 +1,9 @@
 from .log_analysis_new import LogMain
 
 
+# TODO: Make errors more verbose
+# TODO: Check that two directories are created
+# TODO: Check fastqc_data.txt has the same number for R1 and R2
 class Fastqc(LogMain):
     """
     This class will check the fastqc log

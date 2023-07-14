@@ -2,6 +2,8 @@ from .log_analysis_new import LogMain
 import pandas as pd
 import re
 
+
+# TODO: Ensure no tmp file is laying around
 class Bwa(LogMain):
     """
     This class will check the bwa log
@@ -148,6 +150,7 @@ class Bwa(LogMain):
         if any(int(i) < 0 for i in seq):
             raise Exception('check_num_sequence: ' + self.sample + ' did not read a positive number of sequences')
 
+    # TODO: Make check more verbose
     def check_consistency(self, rows):
         """
         Check consistency in terms of single-end and paired-end sequences. This check is only done for paired samples
