@@ -66,7 +66,7 @@ class Bwa(LogMain):
                 self.mem_process_seqs.append(row)
 
     def check_log(self, check_process=True, check_mem_process_seqs=True, check_mem_pestat=True, check_start_statement=True, 
-                  check_correct_sample=True):
+                  check_correct_sample=True, check_tmp=True):
         """
         This method will run all the methods implemented for this class
 
@@ -89,6 +89,8 @@ class Bwa(LogMain):
             self.check_start_statement()
         if check_correct_sample:
             self.check_correct_sample()
+        if check_tmp:
+            self.check_tmp_files()
 
     def _batch(self, iterable, n=1):
         l = len(iterable)
