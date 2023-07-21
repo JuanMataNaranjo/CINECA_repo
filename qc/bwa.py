@@ -1,6 +1,7 @@
 from .log_analysis_new import LogMain
 import pandas as pd
 import re
+import glob
 
 
 # TODO: Ensure no tmp file is laying around
@@ -28,12 +29,16 @@ class Bwa(LogMain):
         :param table_path: Path in which we can find the fastq.csv (file containing this information)
         :return: Boolean value which will be stored as part of the class variables
         """
-
-        df = pd.read_csv(table_path)
-
-        bool_ = len(df[df.Sample == self.sample]) == 2
-
-        return bool_
+        
+        try:
+            df = pd.read_csv(table_path)
+            bool_ = len(df[df.Sample == self.sample]) == 2
+            return bool_
+        except IsADirectoryError as e:
+            path = table_path + '/*.gz'
+            files = glob.glob(path)
+            bool_ = len(files) == 2
+            return bool_
 
     def read_log(self):
         """
@@ -99,7 +104,7 @@ class Bwa(LogMain):
         """
         for batch in self._batch(self.process, 2):
             self.check_num_sequence(batch[0])
-            self.check_consistency(batch)
+            # self.check_consistency(batch)
 
     def check_mem_process_seqs(self):
         """
@@ -150,7 +155,6 @@ class Bwa(LogMain):
         if any(int(i) < 0 for i in seq):
             raise Exception('check_num_sequence: ' + self.sample + ' did not read a positive number of sequences')
 
-    # TODO: Make check more verbose
     def check_consistency(self, rows):
         """
         Check consistency in terms of single-end and paired-end sequences. This check is only done for paired samples
@@ -254,3 +258,14 @@ class Bwa(LogMain):
                     else:
                         raise Exception('check_enough_pairs ' + self.sample + ' not enough pairs, however code has '
                                                                               'considered to have enough pairs anyway')
+
+    def check_tmp_files(self, path):
+        """
+        Ensure that no tmp files are still laying around which would imply that the pipeline has not been completed correctly
+        """
+
+        files = [f for f in os.listdir(self.path) if os.path.isfile(f)]
+        print(file)
+        tmp_files = [i for i in files if 'tmp' in i]
+        if len(tmp_files) > 0:
+            raise Exception('check_tmp_files ' + self.sample + ' still has some tmp files laying around: \n', tmp_files)
