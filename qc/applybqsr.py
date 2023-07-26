@@ -5,7 +5,6 @@ class ApplyBQSR(Parent):
     """
     This class will check the Apply BQSR log
     """
-    # TODO: Check the chromosomes that are being evaluated
 
     def __init__(self, path, sample, input_parameter_path='template_recaldat.log'):
         super().__init__(path, sample)

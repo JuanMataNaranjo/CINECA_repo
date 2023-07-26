@@ -1,8 +1,11 @@
 ## Quick code to collect all benchmark information
 
+import glob
 import os
 import pandas as pd
 import re
+import argparse
+
 
 def extract_information(sample, path=''):
     """
@@ -59,9 +62,113 @@ def extract_information(sample, path=''):
     return benchmark_dict
 
 
+def extract_info_list(id_, sample, path):
+
+    l = []
+    deli = '\t'
+
+    list_files_fastqc = os.listdir(path+'fastqc/')
+    list_benchmark = [i for i in list_files_fastqc if re.search('.benchmark$', i)]
+
+    value = 0
+    for i in list_benchmark:
+
+        df = pd.read_csv(path+'fastqc/'+i, delimiter=deli)
+        value += df.s.values[0]
+
+    # ID
+    l.append(id_)
+
+    ## Fastqc
+    l.append(round(value/60, 2))
+
+    ## Bwa
+    try:
+        l.append(round(pd.read_csv(path+'bwa/'+sample+'.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## SamBlaster
+    try:
+        l.append(round(pd.read_csv(path+'bwa/'+sample+'_samblaster.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## SamSort
+    try:
+        l.append(round(pd.read_csv(path+'bwa/'+sample+'_sort_nodup.sam.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## BaseRecalibrator
+    try:
+        l.append(round(pd.read_csv(path+'gatk_bsr/'+sample+'_sort_nodup.recaldat.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## ApplyBQSR
+    try:
+        l.append(round(pd.read_csv(path+'gatk_bsr/'+sample+'_sort_nodup.bqsr.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## Haplotype
+    try:
+        l.append(round(pd.read_csv(path+'gatk_gvcf/tmp_'+sample+'_sort_nodup.g.vcf.benchmark', delimiter=deli).s.values[0]/60, 2))
+    except FileNotFoundError as e:
+        l.append(0)
+
+    ## File size
+    size = round(os.path.getsize(path + sample + '_R1.fastq.gz')*1e-9, 2)
+    size += round(os.path.getsize(path + sample + '_R1.fastq.gz')*1e-9, 2)
+    l.append(size)
+
+    return l
+
+
 if __name__ == "__main__":
     
-    print('Time is reported in MINUTES')
-    df = pd.DataFrame.from_dict(extract_information(sample='HSRR062634'), orient='index', columns=['HSRR062634'])
-    print(df)
+    parser = argparse.ArgumentParser(description='Collect Benchmark Information')
+    parser.add_argument("--path", type=str)
+
+    args = parser.parse_args()
+    path = args.path
+
+    centers = ['1a77728b-011a-4407-b60e-ec90b6430b99', 'ed615b8d-fa86-48bb-b0f8-c841e1aeb0eb', 'd7c41726-13a8-4abd-b185-68198fec12f4', 
+               'fb203f69-94b9-42aa-9f34-c9ee8219a22e', 
+               'eaabd6f1-1b34-4196-882c-198465045d71']
+
+
+    data = [['id', 'fastqc', 'bwa', 'samblaster', 'samsort', 'base', 'apply', 'haplo', 'size (GB)', 'total time (min)']]
+
+    for center in centers:
+        for study in os.listdir(path + '/' + center + '/'):
+            for sample in os.listdir(path + '/' + center + '/' + study + '/'):
+                path_parent = path + '/' + center + '/' + study + '/' + sample + '/'
+                try:
+                    samples = [os.path.basename(x) for x in glob.glob(path_parent + '/*.gz')][0]
+                    samples = samples[:-12]
+                except IndexError as e:
+                    print('Cannot find .gz files for this sample')
+                    continue
+
+                tmp = extract_info_list(id_=center + '||' + study + '||' + sample, sample = samples, path = path_parent)
+                tmp.append(sum(tmp[1:8]))
+                data.append(tmp)
+
+
+    print('FINISHED')
+    print('==================================')
+    print('==================================')
+    print('==================================')
+    df = pd.DataFrame(data[1:], columns=data[0])
+    bins = [0, 5, 10, 15, 20, 25]
+    df['size_bin'] = pd.cut(df['size (GB)'], bins)
+    print(df.head())
+    print(df.size_bin.unique())
+    x = df.groupby(['size_bin'])['total time (min)'].mean()
+    plot = x.plot(kind='bar', xlabel='Size Bucket', ylabel='Processing Time (min)', title='Computational Processing \n Benchmark')
+    fig = plot.get_figure()
+    fig.savefig("output.png", bbox_inches='tight')
+
 
