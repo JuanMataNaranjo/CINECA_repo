@@ -132,3 +132,4 @@ dmypy.json
 /nig_env
 .idea/
 /venv
+benchmark/

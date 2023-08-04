@@ -163,12 +163,25 @@ if __name__ == "__main__":
     print('==================================')
     df = pd.DataFrame(data[1:], columns=data[0])
     bins = [0, 5, 10, 15, 20, 25]
+    bins1 = [i for i in range(25)]
     df['size_bin'] = pd.cut(df['size (GB)'], bins)
-    print(df.head())
-    print(df.size_bin.unique())
+    df['size_bin_small'] = pd.cut(df['size (GB)'], bins1)   
+    
     x = df.groupby(['size_bin'])['total time (min)'].mean()
     plot = x.plot(kind='bar', xlabel='Size Bucket', ylabel='Processing Time (min)', title='Computational Processing \n Benchmark')
     fig = plot.get_figure()
     fig.savefig("output.png", bbox_inches='tight')
+    # df.to_csv('res.csv')
+    df1 = df[(df.size_bin_small == pd.Interval(5, 6, closed='right')) | 
+             (df.size_bin_small == pd.Interval(10, 11, closed='right')) | 
+             (df.size_bin_small == pd.Interval(22, 23, closed='right'))]
+    print(df1.head())
+    x = df1.groupby(['size_bin_small'])[['fastqc', 'bwa', 'samsort', 'base', 'apply', 'haplo']].mean().dropna()
+    print(x)
+    plot = x.T.plot(kind='bar')
+    fig = plot.get_figure()
+    fig.savefig("output1.png", bbox_inches='tight')
 
+
+    
 
