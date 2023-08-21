@@ -70,7 +70,7 @@ class ApplyBQSR(Parent):
 
         self.final_section = self.log_file[-9:]
 
-    def check_log(self, title='ApplyBQSR', score=True, check_running=True, check_correct_sample=True, check_global_flags_start=True,
+    def check_log(self, title='ApplyBQSR', check_running=True, check_correct_sample=True, check_global_flags_start=True,
                   check_final_section=True, check_global_flags=True, check_applybqsr=True, check_featuremanager=True, check_progressmeter=True,
                   progressmeter_analysis=True):
         """
@@ -105,8 +105,6 @@ class ApplyBQSR(Parent):
             self.check_progressmeter()
         #if progressmeter_analysis:
         #    self.progressmeter_analysis(title=title)
-        if score:
-            return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 
     def check_final_section(self):
         """

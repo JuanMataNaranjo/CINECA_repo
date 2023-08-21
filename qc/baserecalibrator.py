@@ -74,7 +74,7 @@ class BaseRecalibrator(Parent):
 
         self.final_section = self.log_file[-11:]
 
-    def check_log(self, title='BaseRecalibrator', score=True, check_running=True, check_correct_sample=True, check_global_flags_start=True,
+    def check_log(self, title='BaseRecalibrator', check_running=True, check_correct_sample=True, check_global_flags_start=True,
                   check_final_section=True, check_global_flags=True, check_baserecalibrator=True, check_featuremanager=True,
                   check_progressmeter=True, progressmeter_analysis=True):
         """
@@ -109,8 +109,6 @@ class BaseRecalibrator(Parent):
             self.check_progressmeter()
         if progressmeter_analysis:
             self.progressmeter_analysis(title=title)
-        if score:
-            return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 
     def check_final_section(self):
         """
