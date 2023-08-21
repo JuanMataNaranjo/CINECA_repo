@@ -103,8 +103,8 @@ class ApplyBQSR(Parent):
             self.check_featuremanager()
         if check_progressmeter:
             self.check_progressmeter()
-        if progressmeter_analysis:
-            self.progressmeter_analysis(title=title)
+        #if progressmeter_analysis:
+        #    self.progressmeter_analysis(title=title)
         if score:
             return self.compute_score([self.true_base_chr_count, self.true_base_chr_time, self.true_base_chr_reads])
 

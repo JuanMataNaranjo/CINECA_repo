@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     centers = ['1a77728b-011a-4407-b60e-ec90b6430b99', 'ed615b8d-fa86-48bb-b0f8-c841e1aeb0eb', 'd7c41726-13a8-4abd-b185-68198fec12f4', 
                'fb203f69-94b9-42aa-9f34-c9ee8219a22e', 
-               'eaabd6f1-1b34-4196-882c-198465045d71', 'gatk_db']
+               'eaabd6f1-1b34-4196-882c-198465045d71']
 
     for center in centers:
         print('=============================')
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         try:
             for study in os.listdir(path + '/' + center + '/'):
                 for sample in os.listdir(path + '/' + center + '/' + study + '/'):
-                    print(center + '||' + study + '||' + sample)
+                    print(center + '/' + study + '/' + sample)
                     path_parent = path + '/' + center + '/' + study + '/' + sample + '/'
                     try:
                         samples = [os.path.basename(x) for x in glob.glob(path_parent + '/*.gz')][0]
@@ -63,78 +63,65 @@ if __name__ == "__main__":
                             print('Issue with Fastqc: ', sample)
                             print(e)
 
-                    # if 'samsort' in checks:
-                    #     print('SAMSORT')
-                    #     samsort_class = SamSort(path=parent_path+'samsort/', sample=sample, table_path='data/fastq.csv')
-                    #     try:
-                    #         samsort_class.check_log()
-                    #     except Exception as e:
-                    #         print('Issue with SamSort: ', sample)
-                    #         print(e)
+                    if 'samsort' in checks:
+                        print('SAMSORT')
+                        try:
+                            samsort_class = SamSort(path=path_parent+'bwa/', sample=samples, table_path='data/fastq.csv')
+                        except FileNotFoundError as e:
+                            print('SAMSORTBLASTER file not found')
+                        try:
+                            samsort_class.check_log()
+                        except Exception as e:
+                            print('Issue with SamSort: ', sample)
+                            print(e)
 
-                    # if 'baserecalibrator' in checks:
-                    #     print('BaseRecalibrator')
-                    #     baserecalibrator_class = BaseRecalibrator(path=parent_path + 'baserecalibrator/', sample=sample, 
-                    #                                             table_path='data/fastq.csv')
-                    #     try:
-                    #         baserecalibrator_class.check_log(title=None, score=False)
+                    if 'baserecalibrator' in checks:
+                        print('BaseRecalibrator')
+                        try:
+                            baserecalibrator_class = BaseRecalibrator(path=path_parent + 'gatk_bsr/', sample=samples, 
+                                                                table_path='data/fastq.csv')
+                        except FileNotFoundError as e:
+                            print('GATK_BSR files not found')
+                        try:
+                            baserecalibrator_class.check_log(title=None, score=False, progressmeter_analysis=False, check_running=True, check_correct_sample=True, check_global_flags_start=True,
+                  check_final_section=True, check_global_flags=True, check_baserecalibrator=True, check_featuremanager=True,
+                  check_progressmeter=True)
                                     
-                    #     except Exception as e:
-                    #         print('Issue with BaseRecalibrator: ', sample)
-                    #         print(e)
+                        except Exception as e:
+                            print('Issue with BaseRecalibrator: ', sample)
+                            print(e)
 
-                    # if 'applybqsr' in checks:
-                    #     print('ApplyBQSR')
-                    #     applybqsr_class = ApplyBQSR(path=parent_path+'applybqsr/', sample=sample)
-                    #     try:
-                    #         applybqsr_class.check_log(title=None, score=False)
+                    if 'applybqsr' in checks:
+                        print('ApplyBQSR')
+                        try:
+                            applybqsr_class = ApplyBQSR(path=path_parent+'gatk_bsr/', sample=samples)
+                        except FileNotFoundError as e:
+                            print('APPLYBQSR File not Found')
+                        try:
+                            applybqsr_class.check_log(title=None, score=False, check_running=True, check_correct_sample=False, check_global_flags_start=False,
+                  check_final_section=False, check_global_flags=False, check_applybqsr=False, check_featuremanager=False, check_progressmeter=False,
+                  progressmeter_analysis=True)
                                     
-                    #     except Exception as e:
-                    #         print('Issue with ApplyBQSR: ', sample)
-                    #         print(e)
+                        except Exception as e:
+                            print('Issue with ApplyBQSR: ', sample)
+                            print(e)
 
-                    # if 'haplotype' in checks:
-                    #     print('HaploType')
-                    #     haplo_class = HaploType(path=parent_path+'haplotypecaller/', sample=sample, table_path='data/fastq.csv')
-                    #     try:
-                    #         haplo_class.check_log(warning_plot=False, title=None, score=False)
+                    if 'haplotype' in checks:
+                        print('HaploType')
+                        try:
+                            haplo_class = HaploType(path=path_parent+'gatk_gvcf/', sample=samples)
+                        except FileNotFoundError as e:
+                            print('HAPLOTYPE File not Found')
+                        try:
+                            haplo_class.check_log(warning_plot=False, title=None, score=False)
                                     
-                    #     except Exception as e:
-                    #         print('Issue with HaploType: ', sample)
-                    #         print(e)
+                        except Exception as e:
+                            print('Issue with HaploType: ', sample)
+                            print(e)
 
 
                     # break
         except PermissionError as e:
             print('No permissions for ', center)
             continue
-
-        
-    #     print('ApplyBQSR')
-    #     applybqsr_class = ApplyBQSR(path=parent_path+'applybqsr/', sample=sample)
-    #     try:
-    #         score += applybqsr_class.check_log(title=None, score=True)
-                    
-    #     except Exception as e:
-    #         print('Issue with ApplyBQSR: ', sample)
-    #         print(e)
-        
-    #     print('HaploType')
-    #     haplo_class = HaploType(path=parent_path+'haplotypecaller/', sample=sample, table_path='data/fastq.csv')
-    #     try:
-    #         score += haplo_class.check_log(warning_plot=False, title=None, score=True)
-                    
-    #     except Exception as e:
-    #         print('Issue with HaploType: ', sample)
-    #         print(e)
-            
-    #     list_.append([sample, round(score, 2)])
-
-    #     print('===============')
-    #     print('')
-
-
-
-
-
 

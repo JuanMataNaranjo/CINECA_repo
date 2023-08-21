@@ -6,6 +6,7 @@ import os
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import subprocess
+import glob
 
 
 class LogMain(metaclass=ABCMeta):
@@ -52,11 +53,15 @@ class Overall:
         :return: Boolean value which will be stored as part of the class variables
         """
 
-        df = pd.read_csv(table_path)
-
-        bool_ = len(df[df.Sample == self.sample]) == 2
-
-        return bool_
+        try:
+            df = pd.read_csv(table_path)
+            bool_ = len(df[df.Sample == self.sample]) == 2
+            return bool_
+        except IsADirectoryError as e:
+            path = table_path + '/*.gz'
+            files = glob.glob(path)
+            bool_ = len(files) == 2
+            return bool_
 
     def check_sample_length(self):
         """
@@ -219,11 +224,15 @@ class Parent(LogMain):
         :return: Boolean value which will be stored as part of the class variables
         """
 
-        df = pd.read_csv(table_path)
-
-        bool_ = len(df[df.Sample == self.sample]) == 2
-
-        return bool_
+        try:
+            df = pd.read_csv(table_path)
+            bool_ = len(df[df.Sample == self.sample]) == 2
+            return bool_
+        except FileNotFoundError as e:
+            path = table_path + '/*.gz'
+            files = glob.glob(path)
+            bool_ = len(files) == 2
+            return bool_
 
     def read_log(self, end_part, haplo_prefix=None):
         """
@@ -403,7 +412,7 @@ class Parent(LogMain):
                                                                               'end statements in the ProgressMeter '
                                                                               'section. Issue in condition/s: ', error)
 
-    def progressmeter_analysis(self, title='BaseRecalibrator'):
+    def progressmeter_analysis(self, title=False):
         """
         Visual test to see whether the output is in line with our expectations
         """
@@ -413,30 +422,6 @@ class Parent(LogMain):
             self.chr_count[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += 1
             self.chr_time[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += float(row_split[5])
             self.chr_reads[re.findall(r'chr.*:', row_split[4])[0][3:-1]] += int(row_split[6])
-
-        if title:
-
-            fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, sharex=True, figsize=(15, 15))
-
-            ax1.bar(range(len(self.chr_count)), list(self.chr_count.values()), align='center')
-            ax1.set_xticks(range(len(self.chr_count)))
-            ax1.set_xticklabels(list(self.chr_count.keys()))
-            ax1.set_ylabel('Number of Chromosomes \n Processed')
-
-            ax2.bar(range(len(self.chr_time)), list(self.chr_time.values()), align='center')
-            ax2.set_xticks(range(len(self.chr_count)))
-            ax2.set_xticklabels(list(self.chr_count.keys()))
-            ax2.set_ylabel('Time Required for \n Processing (min)')
-
-            ax3.bar(range(len(self.chr_reads)), list(self.chr_reads.values()), align='center')
-            ax3.set_xticks(range(len(self.chr_count)))
-            ax3.set_xticklabels(list(self.chr_count.keys()))
-            ax3.set_ylabel('Number of Reads \n Performed')
-            ax3.set_xlabel('Chromosomes affected')
-
-            fig.suptitle('Overview of ' + title + ' Process \n ' + self.sample, fontsize=20)
-
-            plt.show()
 
     def compute_score(self, true_dict):
         """

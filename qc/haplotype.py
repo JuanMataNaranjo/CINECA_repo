@@ -8,12 +8,11 @@ class HaploType(Parent):
     This class will check the Haplotype log
     """
 
-    def __init__(self, path, sample, table_path='data/fastq.csv'):
+    def __init__(self, path, sample):
         super().__init__(path, sample)
         self.log_file = None
         self.path = path
         self.sample = sample
-        self.paired = self.single_paired(table_path)
         self.read_log(end_part='_sort_nodup.g.vcf.log')
         self.haplotype = []
         self.featuremanager = []
@@ -143,7 +142,7 @@ class HaploType(Parent):
         - ``check_progressmeter_start_end``
         """
 
-        self.check_progressmeter_chromosomes()
+        #self.check_progressmeter_chromosomes()
         self.check_progressmeter_start_end()
 
     def warning_stats(self):

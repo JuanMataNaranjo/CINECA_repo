@@ -169,7 +169,7 @@ class BaseRecalibrator(Parent):
         - ``check_progressmeter_start_end``
         """
 
-        self.check_progressmeter_chromosomes()
+        #self.check_progressmeter_chromosomes()
         self.check_progressmeter_start_end()
 
     def check_final_section_success(self):

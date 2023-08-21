@@ -2,6 +2,7 @@ from .log_analysis_new import LogMain
 import pandas as pd
 import re
 import numpy as np
+import glob
 
 class SamSort(LogMain):
     """
@@ -23,12 +24,15 @@ class SamSort(LogMain):
         :param table_path: Path in which we can find the fastq.csv (file containing this information)
         :return: Boolean value which will be stored as part of the class variables
         """
-
-        df = pd.read_csv(table_path)
-
-        bool_ = len(df[df.Sample == self.sample]) == 2
-
-        return bool_
+        try:
+            df = pd.read_csv(table_path)
+            bool_ = len(df[df.Sample == self.sample]) == 2
+            return bool_
+        except FileNotFoundError as e:
+            path = table_path + '/*.gz'
+            files = glob.glob(path)
+            bool_ = len(files) == 2
+            return bool_
 
     def read_log(self):
         """

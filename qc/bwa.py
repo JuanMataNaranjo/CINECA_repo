@@ -2,9 +2,9 @@ from .log_analysis_new import LogMain
 import pandas as pd
 import re
 import glob
+import os 
 
 
-# TODO: Ensure no tmp file is laying around
 class Bwa(LogMain):
     """
     This class will check the bwa log
@@ -261,13 +261,12 @@ class Bwa(LogMain):
                         raise Exception('check_enough_pairs ' + self.sample + ' not enough pairs, however code has '
                                                                               'considered to have enough pairs anyway')
 
-    def check_tmp_files(self, path):
+    def check_tmp_files(self):
         """
         Ensure that no tmp files are still laying around which would imply that the pipeline has not been completed correctly
         """
 
         files = [f for f in os.listdir(self.path) if os.path.isfile(f)]
-        print(file)
         tmp_files = [i for i in files if 'tmp' in i]
         if len(tmp_files) > 0:
             raise Exception('check_tmp_files ' + self.sample + ' still has some tmp files laying around: \n', tmp_files)
